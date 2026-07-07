@@ -1,0 +1,170 @@
+// STRATIX Console — mock data for the UI kit (fake, illustrative).
+window.STX_DATA = {
+  // Klasifikasi Sektor Ekonomi Bank Indonesia (disederhanakan)
+  sectorsBI: [
+    "Pertanian, Perburuan & Kehutanan",
+    "Perikanan",
+    "Pertambangan & Penggalian",
+    "Industri Pengolahan",
+    "Pengadaan Listrik, Gas & Air",
+    "Konstruksi",
+    "Perdagangan Besar & Eceran",
+    "Penyediaan Akomodasi & Makan Minum",
+    "Transportasi, Pergudangan & Komunikasi",
+    "Perantara Keuangan (Jasa Keuangan)",
+    "Real Estat & Jasa Persewaan",
+    "Informasi & Komunikasi",
+    "Jasa Pendidikan",
+    "Jasa Kesehatan & Kegiatan Sosial",
+    "Jasa Kemasyarakatan, Sosial & Budaya",
+    "Jasa Perusahaan",
+    "Lainnya",
+  ],
+  // Bidang usaha umum yang mudah dipahami
+  bidangUsaha: [
+    "Manufaktur & Produksi",
+    "Perdagangan & Ritel",
+    "Jasa Keuangan & Perbankan",
+    "Teknologi & Digital",
+    "Properti & Konstruksi",
+    "Energi & Pertambangan",
+    "Agribisnis & Pangan",
+    "Transportasi & Logistik",
+    "Kesehatan & Farmasi",
+    "Pendidikan",
+    "Pariwisata & Perhotelan",
+    "Media & Industri Kreatif",
+    "Telekomunikasi",
+    "Barang Konsumen (FMCG)",
+    "Otomotif & Komponen",
+    "Energi Terbarukan",
+    "Jasa Profesional",
+    "Lainnya",
+  ],
+
+  cases: [],
+
+  documents: [],
+
+  agents: [
+    { id: "finance", name: "Agen Analis Keuangan", icon: "line-chart", color: "#0E7C8B", bg: "var(--info-050)",
+      desc: "Analisis komprehensif layaknya investor berpengalaman — likuiditas, profitabilitas, solvabilitas, arus kas, dan valuasi.",
+      tag: "Analis Keuangan" },
+    { id: "risk", name: "Agen Risiko & Fraud", icon: "shield-alert", color: "#C33A3A", bg: "var(--negative-050)",
+      desc: "Mengidentifikasi inefisiensi, red flags fraud, indikasi modus kecurangan, dan rekomendasi tindak lanjut forensik.",
+      tag: "Risiko & Fraud" },
+    { id: "transform", name: "Agen Transformasi", icon: "git-branch", color: "#1D4270", bg: "rgba(29,66,112,0.08)",
+      desc: "Menyusun rencana transformasi 5 tahun yang detail, selayaknya konsultan manajemen kelas dunia.",
+      tag: "Transformasi" },
+  ],
+
+  // Finance agent result
+  finance: {
+    kpis: [
+      { label: "Revenue FY2024", value: "Rp 4,82", unit: "T", delta: "+12,4%", hint: "YoY", icon: "trending-up" },
+      { label: "EBITDA Margin", value: "18,3", unit: "%", delta: "+1,1%", hint: "vs FY23", icon: "percent" },
+      { label: "Net Profit", value: "Rp 419", unit: "M", delta: "+8,7%", hint: "YoY", icon: "wallet" },
+      { label: "Free Cash Flow", value: "Rp 512", unit: "M", delta: "-4,2%", hint: "YoY", icon: "waves" },
+    ],
+    revenueSeries: [3.6, 3.9, 4.0, 4.29, 4.82],
+    revenueLabels: ["2020", "2021", "2022", "2023", "2024"],
+    marginSeries: [14.2, 15.1, 16.8, 17.2, 18.3],
+    ratios: [
+      { r: "Current Ratio", v: "1,84×", b: "1,50×", s: "Baik" },
+      { r: "Quick Ratio", v: "1,12×", b: "1,00×", s: "Baik" },
+      { r: "Debt to Equity", v: "1,12×", b: "1,00×", s: "Waspada" },
+      { r: "Interest Coverage", v: "3,20×", b: "2,50×", s: "Baik" },
+      { r: "ROE", v: "14,6%", b: "12,0%", s: "Baik" },
+      { r: "Inventory Turnover", v: "5,4×", b: "6,0×", s: "Waspada" },
+    ],
+    verdict: "Fundamental solid dengan pertumbuhan pendapatan konsisten. Perhatian pada rasio utang yang meningkat dan perputaran persediaan di bawah benchmark industri.",
+
+    // Ulasan naratif (sudut pandang Analis Keuangan, layak print)
+    reviewMeta: { period: "Tahun Buku 2024 (Audited)", basis: "Laporan Keuangan Konsolidasian", prepared: "Agen Analis Keuangan STRATIX" },
+    review: [
+      { h: "1. Ikhtisar Kinerja",
+        b: "Sepanjang tahun buku 2024, perusahaan membukukan pendapatan Rp 4,82 triliun, tumbuh 12,4% dibanding tahun sebelumnya dan melanjutkan tren kenaikan lima tahun berturut-turut dengan CAGR 7,6%. Pertumbuhan ini didorong oleh pemulihan volume penjualan pada segmen inti serta penyesuaian harga jual. Marjin EBITDA menguat ke 18,3% dari 17,2%, mencerminkan disiplin biaya dan skala ekonomi yang mulai terbentuk. Dari perspektif analis keuangan, kualitas pertumbuhan tergolong sehat karena disertai perbaikan marjin, bukan semata ekspansi volume berbiaya tinggi." },
+      { h: "2. Profitabilitas & Kualitas Laba",
+        b: "Laba bersih mencapai Rp 419 miliar (marjin bersih 8,7%), naik 8,7% secara tahunan. Namun laju pertumbuhan laba bersih tertinggal dari pertumbuhan pendapatan, terutama akibat kenaikan beban bunga seiring bertambahnya utang. Return on Equity sebesar 14,6% berada di atas benchmark industri 12,0%, menandakan penggunaan modal yang efisien. Kualitas laba dinilai memadai: porsi laba yang berasal dari pos non-operasional relatif kecil, sehingga laba mencerminkan kinerja operasi inti." },
+      { h: "3. Likuiditas & Solvabilitas",
+        b: "Posisi likuiditas kuat dengan Current Ratio 1,84× dan Quick Ratio 1,12×, keduanya di atas benchmark. Perusahaan memiliki bantalan modal kerja yang cukup untuk menutup kewajiban jangka pendek tanpa tekanan. Di sisi solvabilitas, Interest Coverage 3,20× masih aman, tetapi Debt to Equity meningkat ke 1,12× (benchmark 1,00×). Tren peningkatan leverage perlu dicermati karena mempersempit ruang gerak apabila suku bunga naik atau arus kas operasi melemah." },
+      { h: "4. Arus Kas & Kualitas Kas",
+        b: "Free Cash Flow tercatat Rp 512 miliar, turun 4,2% meski laba naik. Penurunan ini bersumber dari peningkatan kebutuhan modal kerja — khususnya piutang dan persediaan — serta belanja modal yang lebih tinggi. Selisih yang melebar antara laba akrual dan kas yang dihasilkan menjadi perhatian analis: laba yang tumbuh idealnya diikuti konversi kas yang sepadan. Rasio konversi kas yang menurun mengindikasikan modal kerja mulai menahan kas perusahaan." },
+      { h: "5. Efisiensi Modal Kerja",
+        b: "Inventory Turnover 5,4× berada di bawah benchmark industri 6,0×, menandakan persediaan berputar lebih lambat dari standar. Kombinasi persediaan yang menumpuk dan piutang yang tumbuh lebih cepat dari penjualan menekan siklus konversi kas. Perbaikan manajemen persediaan dan kebijakan kredit pelanggan berpotensi melepaskan kas yang kini terikat di modal kerja." },
+      { h: "6. Struktur Permodalan",
+        b: "Struktur modal bergeser ke arah yang lebih agresif seiring pendanaan ekspansi melalui utang. Selama arus kas operasi tetap kuat dan Interest Coverage terjaga di atas 3×, tingkat leverage saat ini masih terkendali. Namun analis menyarankan pemantauan kovenan pinjaman dan penyusunan rencana penguatan permodalan agar fleksibilitas keuangan tidak tergerus pada siklus yang kurang menguntungkan." },
+      { h: "7. Kesimpulan Analis",
+        b: "Secara keseluruhan, kesehatan keuangan perusahaan tergolong solid dengan pertumbuhan pendapatan dan marjin yang konsisten serta likuiditas yang kuat. Fokus perbaikan sebaiknya diarahkan pada tiga hal: (i) mengembalikan konversi kas melalui efisiensi modal kerja, (ii) mengendalikan laju penambahan utang, dan (iii) memperbaiki perputaran persediaan agar sejalan dengan benchmark. Dengan eksekusi pada ketiga area tersebut, profil keuangan perusahaan berpeluang naik dari kategori 'Sehat' menuju 'Sangat Sehat'." },
+    ],
+
+    // Red flags & concern dari analisis keuangan (bukan fraud)
+    concerns: [
+      { title: "Rasio utang meningkat melewati benchmark", level: "warning", area: "Solvabilitas", metric: "DER 1,12× (bmk 1,00×)",
+        nilai: "1,12×", benchmark: "1,00×", tren: "Memburuk",
+        detail: "Debt to Equity naik dari 0,98× ke 1,12× akibat pendanaan ekspansi via utang. Interest Coverage turun ke 3,20×.",
+        implication: "Fleksibilitas keuangan menyempit; risiko tekanan bila suku bunga naik atau arus kas melemah.",
+        rekomendasi: "Susun rencana penguatan permodalan dan pantau kepatuhan kovenan; batasi penambahan utang baru." },
+      { title: "Free Cash Flow menurun meski laba naik", level: "negative", area: "Arus Kas", metric: "FCF -4,2% YoY",
+        nilai: "-4,2%", benchmark: "> 0%", tren: "Memburuk",
+        detail: "Laba bersih tumbuh 8,7% namun FCF justru turun 4,2% karena kebutuhan modal kerja dan capex meningkat.",
+        implication: "Kualitas laba perlu dicermati — pertumbuhan belum sepenuhnya terkonversi menjadi kas.",
+        rekomendasi: "Perketat manajemen modal kerja dan tinjau prioritas belanja modal untuk memulihkan konversi kas." },
+      { title: "Perputaran persediaan di bawah standar industri", level: "warning", area: "Modal Kerja", metric: "5,4× (bmk 6,0×)",
+        nilai: "5,4×", benchmark: "6,0×", tren: "Stabil",
+        detail: "Persediaan berputar lebih lambat dari benchmark, mengikat kas dan menaikkan risiko keusangan stok.",
+        implication: "Siklus konversi kas memanjang; potensi penurunan nilai persediaan bila permintaan melemah.",
+        rekomendasi: "Terapkan kebijakan persediaan berbasis permintaan dan identifikasi stok lambat untuk dilepas." },
+      { title: "Piutang tumbuh lebih cepat dari penjualan", level: "warning", area: "Kualitas Pendapatan", metric: "AR +19% vs Sales +12%",
+        nilai: "+19%", benchmark: "≤ +12%", tren: "Memburuk",
+        detail: "Pertumbuhan piutang usaha melampaui pertumbuhan penjualan, indikasi pelonggaran kebijakan kredit.",
+        implication: "Risiko piutang tak tertagih dan tekanan likuiditas bila kolektibilitas memburuk.",
+        rekomendasi: "Tinjau kebijakan kredit dan perkuat penagihan; pantau aging piutang secara berkala." },
+      { title: "Konsentrasi pada segmen tunggal", level: "info", area: "Diversifikasi", metric: "±68% pendapatan",
+        nilai: "±68%", benchmark: "< 50%", tren: "Stabil",
+        detail: "Mayoritas pendapatan bersumber dari satu segmen produk utama.",
+        implication: "Sensitivitas tinggi terhadap siklus permintaan segmen tersebut; perlu diversifikasi bertahap.",
+        rekomendasi: "Rancang peta diversifikasi pendapatan bertahap ke segmen atau pasar baru." },
+    ],
+  },
+
+  // Risk & fraud result
+  risk: {
+    score: 64,
+    level: "high",
+    matrix: [
+      // rows = dampak (tinggi→rendah), cols = kemungkinan (rendah→tinggi)
+      ["moderate", "high", "high", "critical", "critical"],
+      ["low", "moderate", "high", "high", "critical"],
+      ["low", "moderate", "moderate", "high", "high"],
+      ["low", "low", "moderate", "moderate", "high"],
+      ["low", "low", "low", "moderate", "moderate"],
+    ],
+    flags: [
+      { title: "Lonjakan piutang tak tertagih", level: "critical", area: "Piutang", detail: "Kenaikan 46% AR aging >90 hari tanpa penjelasan memadai; indikasi channel stuffing.", modus: "Fictitious revenue" },
+      { title: "Transaksi pihak berelasi tak wajar", level: "high", area: "Related Party", detail: "Pembelian bahan baku 18% di atas harga pasar dari entitas terafiliasi.", modus: "Related-party abuse" },
+      { title: "Gap rekonsiliasi kas", level: "high", area: "Kas & Bank", detail: "Selisih Rp 12,4 M antara buku besar dan rekening koran Q3.", modus: "Cash misappropriation" },
+      { title: "Kapitalisasi beban berlebih", level: "moderate", area: "Aset Tetap", detail: "Beban pemeliharaan dikapitalisasi untuk memoles laba.", modus: "Improper capitalization" },
+    ],
+    recommendation: "Direkomendasikan audit forensik lanjutan pada siklus pendapatan dan transaksi pihak berelasi, disertai konfirmasi pihak ketiga atas saldo piutang material.",
+  },
+
+  // Transformation roadmap
+  transform: {
+    horizon: "2025 – 2029",
+    ambition: "Menjadi pemain manufaktur otomotif terintegrasi terdepan di Asia Tenggara dengan margin EBITDA 24% dan lini kendaraan listrik yang matang.",
+    pillars: [
+      { name: "Efisiensi Operasional", icon: "gauge", target: "-320 bps COGS" },
+      { name: "Pertumbuhan Digital", icon: "cpu", target: "+Rp 1,4 T revenue baru" },
+      { name: "Portofolio EV", icon: "battery-charging", target: "3 model EV" },
+      { name: "Tata Kelola & ESG", icon: "leaf", target: "ESG rating A" },
+    ],
+    phases: [
+      { year: "2025", title: "Stabilisasi & Fondasi", items: ["Konsolidasi struktur biaya", "Perbaikan tata kelola piutang", "Audit forensik selesai"], invest: "Rp 180 M" },
+      { year: "2026", title: "Optimasi Inti", items: ["Otomasi 2 lini produksi", "Integrasi ERP terpadu", "Program lean manufacturing"], invest: "Rp 420 M" },
+      { year: "2027", title: "Ekspansi Digital", items: ["Kanal penjualan D2C", "Platform after-sales digital", "Kemitraan fintech pembiayaan"], invest: "Rp 610 M" },
+      { year: "2028", title: "Diversifikasi EV", items: ["Peluncuran 2 model EV", "Kemitraan baterai", "Jaringan charging pilot"], invest: "Rp 980 M" },
+      { year: "2029", title: "Kepemimpinan Pasar", items: ["Ekspansi regional ASEAN", "Model EV ke-3", "Target EBITDA 24%"], invest: "Rp 1,2 T" },
+    ],
+  },
+};

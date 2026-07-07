@@ -1,0 +1,28 @@
+/* ============================================================
+   STRATIX — Elevation (shadows) + focus.
+   Cool, low-spread shadows tinted with navy — never pure black.
+   ============================================================ */
+:root {
+  --shadow-xs: 0 1px 2px rgba(14,37,71,0.06);
+  --shadow-sm: 0 1px 2px rgba(14,37,71,0.06), 0 1px 3px rgba(14,37,71,0.08);
+  --shadow-md: 0 2px 4px rgba(14,37,71,0.06), 0 4px 12px rgba(14,37,71,0.09);
+  --shadow-lg: 0 6px 16px rgba(14,37,71,0.10), 0 12px 32px rgba(14,37,71,0.12);
+  --shadow-xl: 0 12px 28px rgba(14,37,71,0.14), 0 24px 64px rgba(14,37,71,0.18);
+  --shadow-inset: inset 0 1px 2px rgba(14,37,71,0.08);
+
+  /* Accent glow — used sparingly on the "X factor" moments */
+  --glow-accent: 0 0 0 1px rgba(18,163,180,0.35), 0 4px 20px rgba(18,163,180,0.25);
+
+  /* Focus ring */
+  --ring-focus: 0 0 0 3px rgba(18,163,180,0.35);
+  --ring-focus-inset: inset 0 0 0 2px var(--teal-500);
+}
+
+[data-theme="dark"] {
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.30);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.30);
+  --shadow-md: 0 2px 6px rgba(0,0,0,0.40), 0 4px 14px rgba(0,0,0,0.42);
+  --shadow-lg: 0 8px 20px rgba(0,0,0,0.48), 0 16px 40px rgba(0,0,0,0.50);
+  --shadow-xl: 0 16px 36px rgba(0,0,0,0.55), 0 30px 72px rgba(0,0,0,0.60);
+  --ring-focus: 0 0 0 3px rgba(47,186,201,0.40);
+}

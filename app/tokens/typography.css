@@ -1,0 +1,47 @@
+/* ============================================================
+   STRATIX — Typography tokens
+   Display + body: Plus Jakarta Sans (humanist, warm, ID-first)
+   Mono / figures: IBM Plex Mono (tabular financial data)
+   ============================================================ */
+:root {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Menlo", monospace;
+  --font-display: var(--font-sans);
+
+  /* Type scale — 1.20 major-third-ish, tuned for dashboards */
+  --text-2xs: 11px;
+  --text-xs:  12px;
+  --text-sm:  13px;
+  --text-md:  14px;   /* base UI */
+  --text-base:15px;   /* base reading */
+  --text-lg:  17px;
+  --text-xl:  20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  --text-4xl: 38px;
+  --text-5xl: 48px;
+  --text-6xl: 60px;
+
+  /* Weights */
+  --fw-regular:  400; /* @kind font */
+  --fw-medium:   500; /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold:     700; /* @kind font */
+  --fw-extra:    800; /* @kind font */
+
+  /* Line heights */
+  --lh-tight:   1.15; /* @kind font */
+  --lh-snug:    1.3;  /* @kind font */
+  --lh-normal:  1.5;  /* @kind font */
+  --lh-relaxed: 1.65; /* @kind font */
+
+  /* Letter spacing */
+  --ls-tight:  -0.02em;  /* @kind font */
+  --ls-snug:   -0.011em; /* @kind font */
+  --ls-normal: 0;        /* @kind font */
+  --ls-wide:   0.02em;   /* @kind font */
+  --ls-caps:   0.08em;   /* @kind font */
+
+  /* Tabular numerals for finance */
+  --num-tabular: "tnum" 1, "lnum" 1; /* @kind other */
+}

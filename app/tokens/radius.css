@@ -1,0 +1,10 @@
+/* STRATIX — Radius tokens. Restrained corners: crisp, institutional. */
+:root {
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;    /* default control */
+  --radius-lg: 12px;   /* cards */
+  --radius-xl: 16px;   /* panels */
+  --radius-2xl: 22px;
+  --radius-pill: 999px;
+}

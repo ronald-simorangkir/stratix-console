@@ -1,0 +1,2103 @@
+<!-- @dsCard group="STRATIX Console" viewport="1320x860" name="Konsultan AI — Aplikasi" subtitle="Alur lengkap: Pustaka Case → Data Primer → Agen → Hasil" -->
+<!-- @startingPoint section="Aplikasi" subtitle="Konsultan AI — console lengkap" viewport="1320x860" -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>STRATIX Console — Konsultan AI</title>
+<link rel="stylesheet" href="./styles.css" />
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+<script src="./vendor/babel.min.js"></script>
+<script src="./vendor/lucide.min.js"></script>
+<script src="./_ds_bundle.js"></script>
+<script src="data.js"></script>
+<script src="ai.js"></script>
+<script src="store.js"></script>
+<style>
+  html, body, #root { height: 100%; margin: 0; }
+  body { background: var(--bg-app); }
+  #root { overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-file="landing.jsx">
+/* global React, Icon */
+
+const LP_CSS = `
+.lp-stage{position:absolute;inset:0;overflow-y:auto;font-family:var(--font-sans);color:#fff;background:#081324;display:flex;flex-direction:column;min-height:100%;
+  background-image:
+    radial-gradient(120% 90% at 82% 8%, rgba(18,163,180,0.20) 0%, rgba(18,163,180,0) 46%),
+    radial-gradient(90% 80% at 8% 100%, rgba(29,66,112,0.55) 0%, rgba(29,66,112,0) 55%),
+    linear-gradient(160deg, #0F2A50 0%, #0A1B33 60%, #081324 100%);}
+.lp-decor{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.lp-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.035) 1px,transparent 1px);background-size:56px 56px;-webkit-mask-image:radial-gradient(80% 70% at 50% 40%,#000 0%,transparent 80%);mask-image:radial-gradient(80% 70% at 50% 40%,#000 0%,transparent 80%)}
+.lp-bladeline{position:absolute;top:6%;right:12%;width:2px;height:460px;transform:rotate(32deg);transform-origin:top;background:linear-gradient(180deg,rgba(107,216,228,0) 0%,rgba(107,216,228,0.8) 18%,rgba(18,163,180,0.9) 55%,rgba(14,37,71,0) 100%);box-shadow:0 0 24px rgba(47,186,201,0.5)}
+.lp-top{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:30px 44px}
+.lp-top img{height:28px;width:auto;display:block}
+.lp-top .lp-r{display:flex;align-items:center;gap:22px;font-size:13px;color:rgba(255,255,255,0.62)}
+.lp-top .lp-r a{color:rgba(255,255,255,0.62);text-decoration:none;transition:color .14s}
+.lp-top .lp-r a:hover{color:#fff}
+.lp-hero{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:center;max-width:1120px;width:100%;margin:0 auto;padding:30px 44px 56px}
+.lp-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--cyan-300);margin-bottom:20px}
+.lp-eyebrow::before{content:"";width:26px;height:1.5px;background:var(--cyan-300)}
+.lp-h1{font-size:clamp(32px,4.2vw,54px);font-weight:800;letter-spacing:-0.025em;line-height:1.08;color:#fff;margin:0;max-width:17ch}
+.lp-h1 .lp-acc{background:linear-gradient(120deg,#6BD8E4 0%,#2FBAC9 50%,#12A3B4 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lp-lede{font-size:clamp(14px,1.4vw,17px);line-height:1.6;color:rgba(255,255,255,0.72);max-width:54ch;margin:20px 0 0}
+.lp-choices{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:40px;max-width:820px}
+.lp-choice{position:relative;text-align:left;cursor:pointer;display:flex;flex-direction:column;padding:26px 26px 24px;border-radius:var(--radius-xl);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;transition:transform .2s cubic-bezier(0.16,1,0.3,1),border-color .2s,background .2s,box-shadow .2s;overflow:hidden}
+.lp-choice:hover{transform:translateY(-4px);border-color:rgba(107,216,228,0.5);background:rgba(255,255,255,0.06);box-shadow:0 20px 50px rgba(0,0,0,0.4)}
+.lp-choice .lp-ic{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
+.lp-choice.lp-primary .lp-ic{background:linear-gradient(135deg,#6BD8E4 0%,#12A3B4 45%,#0E2547 120%);color:#fff}
+.lp-choice.lp-secondary .lp-ic{background:linear-gradient(135deg,#6BD8E4 0%,#12A3B4 45%,#0E2547 120%);color:#fff}
+.lp-choice h3{font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#fff;margin:0}
+.lp-choice p{font-size:13.5px;line-height:1.55;color:rgba(255,255,255,0.62);margin:7px 0 0}
+.lp-cta{display:inline-flex;align-items:center;gap:8px;margin-top:20px;font-size:14px;font-weight:600;color:var(--cyan-300);transition:gap .14s}
+.lp-choice:hover .lp-cta{gap:12px}
+.lp-choice.lp-primary::after{content:"";position:absolute;right:-40px;bottom:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(18,163,180,0.35) 0%,transparent 70%);pointer-events:none}
+.lp-meta{display:flex;align-items:center;gap:8px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.10);font-size:12px;color:rgba(255,255,255,0.5)}
+.lp-dots{display:inline-flex}
+.lp-dot{width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;margin-right:-6px;border:1.5px solid #0A1B33}
+.lp-foot{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:22px 44px;font-size:12px;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.07)}
+.lp-foot .lp-pills{display:flex;gap:8px}
+.lp-foot .lp-pill{padding:4px 10px;border-radius:999px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);color:rgba(255,255,255,0.6)}
+@media (max-width:760px){.lp-choices{grid-template-columns:1fr}.lp-top,.lp-hero,.lp-foot{padding-left:24px;padding-right:24px}}
+`;
+
+function LandingScreen({ onContinue, onNew, user, onLogout }) {
+  React.useEffect(() => {
+    if (!document.getElementById("lp-style")) {
+      const s = document.createElement("style");
+      s.id = "lp-style"; s.textContent = LP_CSS;
+      document.head.appendChild(s);
+    }
+  }, []);
+  const logo = (window.__resources && window.__resources.logoOnDark) || "./assets/stratix-logo-light.png";
+  return (
+    <div className="lp-stage">
+      <div className="lp-decor">
+        <div className="lp-grid" />
+        <div className="lp-bladeline" />
+      </div>
+
+      <div className="lp-top">
+        <img src={logo} alt="STRATIX" />
+        <div className="lp-r">
+          {user && user.name ? <span style={{ color: "rgba(255,255,255,.72)", fontSize: 13 }}>{user.name}</span> : null}
+          <a href="#" onClick={(e) => { e.preventDefault(); onContinue(); }} style={{ color: "#fff", fontWeight: 600 }}>Masuk</a>
+          {onLogout ? <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); }}>Keluar</a> : null}
+        </div>
+      </div>
+
+      <div className="lp-hero">
+        <span className="lp-eyebrow">Konsultan AI · Strategy with X Factor</span>
+        <h1 className="lp-h1">Analisis awal nan <span className="lp-acc">tajam</span>, strategi tanpa basa-basi.</h1>
+        <p className="lp-lede">Satu ruang kerja untuk menilai keuangan, mengulas risiko &amp; fraud, dan menyusun rencana transformasi lima tahun — berdasarkan dokumen dan data.</p>
+
+        <div className="lp-choices">
+          <div className="lp-choice lp-secondary" role="button" tabIndex={0} onClick={onContinue}>
+            <div className="lp-ic"><Icon n="folder-open" s={24} /></div>
+            <h3>Lanjutkan Case</h3>
+            <p>Buka kembali analisis yang sudah ada di Pustaka Case Anda dan lanjutkan pekerjaan.</p>
+            <div className="lp-meta">
+              <span>Lanjutkan dari analisis terakhir Anda</span>
+            </div>
+            <span className="lp-cta">Buka Pustaka Case <Icon n="arrow-right" s={16} /></span>
+          </div>
+
+          <div className="lp-choice lp-primary" role="button" tabIndex={0} onClick={onNew}>
+            <div className="lp-ic"><Icon n="plus" s={24} /></div>
+            <h3>Buat Case Baru</h3>
+            <p>Mulai analisis perusahaan baru — indeks case dibuat otomatis, lalu isi Data Primer.</p>
+            <div className="lp-meta">
+              <Icon n="sparkles" s={15} />
+              <span>Isi Data Primer otomatis via AI dari dokumen atau website</span>
+            </div>
+            <span className="lp-cta">Mulai sekarang <Icon n="arrow-right" s={16} /></span>
+          </div>
+        </div>
+      </div>
+
+      <div className="lp-foot">
+        <span>© 2026 STRATIX · Konsultan AI</span>
+        <div className="lp-pills">
+          <span className="lp-pill">Analis Keuangan</span>
+          <span className="lp-pill">Risiko &amp; Fraud</span>
+          <span className="lp-pill">Transformasi</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuthScreen({ onAuth }) {
+  const [mode, setMode] = React.useState("login");
+  const [name, setName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [pass, setPass] = React.useState("");
+  const [err, setErr] = React.useState("");
+  React.useEffect(() => {
+    if (!document.getElementById("lp-style")) {
+      const st = document.createElement("style"); st.id = "lp-style"; st.textContent = LP_CSS; document.head.appendChild(st);
+    }
+    refreshIcons();
+  });
+  const logo = (window.__resources && window.__resources.logoOnDark) || "./assets/stratix-logo-light.png";
+  const submit = () => {
+    setErr("");
+    try {
+      const A = window.STX_AUTH;
+      const u = mode === "login" ? A.login(email, pass) : A.signup(name, email, pass);
+      onAuth(u);
+    } catch (e) { setErr((e && e.message) || String(e)); }
+  };
+  const inp = { width: "100%", height: 44, borderRadius: 10, border: "1px solid rgba(255,255,255,.16)", background: "rgba(255,255,255,.06)", color: "#fff", padding: "0 14px", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", marginBottom: 12, boxSizing: "border-box" };
+  return (
+    <div className="lp-stage" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="lp-decor"><div className="lp-grid" /><div className="lp-bladeline" /></div>
+      <div style={{ position: "relative", zIndex: 2, width: 420, maxWidth: "92vw", background: "rgba(10,22,44,.72)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 20, padding: "34px 30px", boxShadow: "0 24px 70px rgba(0,0,0,.42)" }}>
+        <img src={logo} alt="STRATIX" style={{ height: 30, marginBottom: 22 }} />
+        <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 4 }}>{mode === "login" ? "Masuk ke STRATIX" : "Buat Akun STRATIX"}</div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,.6)", marginBottom: 20 }}>Ruang kerja konsultan AI Anda.</div>
+        {mode === "signup" && <input style={inp} placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />}
+        <input style={inp} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input style={inp} type="password" placeholder="Kata sandi" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+        {err ? <div style={{ fontSize: 12.5, color: "#FCA5A5", marginBottom: 12, display: "flex", gap: 6, alignItems: "center" }}><Icon n="alert-circle" s={14} /> {err}</div> : null}
+        <button onClick={submit} style={{ width: "100%", height: 46, borderRadius: 11, border: "none", background: "var(--grad-blade, linear-gradient(120deg,#12A3B4,#0E7C8B))", color: "#fff", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+          {mode === "login" ? "Masuk" : "Daftar"}
+        </button>
+        <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.6)", marginTop: 16, textAlign: "center" }}>
+          {mode === "login" ? "Belum punya akun? " : "Sudah punya akun? "}
+          <a href="#" onClick={(e) => { e.preventDefault(); setErr(""); setMode(mode === "login" ? "signup" : "login"); }} style={{ color: "#4FD1C5", fontWeight: 700 }}>{mode === "login" ? "Daftar" : "Masuk"}</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { LandingScreen, AuthScreen });
+
+</script>
+<script type="text/babel" data-file="shared.jsx">
+/* global React */
+const { StatCard, Badge, IconButton, Tooltip, Button } = window.STRATIXDesignSystem_72cbdd;
+
+/* React-owned Lucide icon: builds an inline <svg> from lucide.icons and injects it
+   into a span via ref. React only manages the span (no JSX children), so re-renders
+   never touch the SVG internals — no removeChild crashes. */
+function lucideSvg(name, size) {
+  const L = window.lucide;
+  if (!L || !L.icons) return "";
+  const pascal = String(name).replace(/(^|-)([a-z0-9])/g, (_, __, c) => c.toUpperCase());
+  const node = L.icons[pascal];
+  if (!node) return "";
+  const body = (node[2] || []).map(([tag, attrs]) =>
+    `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(" ")}></${tag}>`
+  ).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+}
+function Icon({ n, s = 18, style = {} }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => { if (ref.current) ref.current.innerHTML = lucideSvg(n, s); }, [n, s]);
+  return <span ref={ref} style={{ display: "inline-flex", width: s, height: s, ...style }} />;
+}
+function refreshIcons() { /* no-op: icons are React-owned inline SVG now */ }
+
+/* Company mark — colored rounded square with initials */
+function CompanyMark({ initials, color, size = 40, radius = 10 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: radius, flexShrink: 0,
+      background: color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+      fontWeight: 800, fontSize: size * 0.36, letterSpacing: "-0.01em",
+      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.14)",
+    }}>{initials}</div>
+  );
+}
+
+/* ---------- App shell ---------- */
+function AppShell({ active, onNav, openCases = [], activeCaseId, dirtyIds = {}, jobs = {}, onSelectCase, onCloseCase, theme, onToggleTheme, children, title, subtitle, actions, onBack, user }) {
+  const nav = [
+    { id: "library", label: "Pustaka Case", icon: "folders" },
+    { id: "workspace", label: "Ruang Kerja", icon: "layout-panel-left", disabled: !activeCaseId },
+    { id: "settings", label: "Pengaturan", icon: "settings" },
+  ];
+  React.useEffect(refreshIcons);
+  return (
+    <div style={{ display: "flex", height: "100%", background: "var(--bg-app)", color: "var(--text-body)" }}>
+      {/* Sidebar */}
+      <aside style={{
+        width: "var(--sidebar-w)", flexShrink: 0, background: "var(--surface)",
+        borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column",
+      }}>
+        <div style={{ height: "var(--topbar-h)", display: "flex", alignItems: "center", padding: "0 18px", borderBottom: "1px solid var(--border-subtle)" }}>
+          <img src={theme === "dark" ? ((window.__resources && window.__resources.logoOnDark) || "./assets/stratix-logo-light.png") : ((window.__resources && window.__resources.logoOnLight) || "./assets/stratix-logo.png")} alt="STRATIX" style={{ height: 40, width: "auto" }} />
+        </div>
+        <div style={{ padding: "14px 12px", flex: 1, overflowY: "auto" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)", padding: "6px 10px 8px" }}>Navigasi</div>
+          {nav.map((n) => (
+            <button key={n.id} onClick={() => !n.disabled && onNav(n.id)} disabled={n.disabled}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 11, height: 40, padding: "0 10px",
+                border: "none", borderRadius: "var(--radius-md)", marginBottom: 2, cursor: n.disabled ? "not-allowed" : "pointer",
+                fontFamily: "var(--font-sans)", fontSize: "var(--text-md)", fontWeight: 600, textAlign: "left",
+                color: active === n.id ? "var(--text-strong)" : n.disabled ? "var(--text-faint)" : "var(--text-muted)",
+                background: active === n.id ? "var(--accent-quiet)" : "transparent",
+                boxShadow: active === n.id ? "inset 3px 0 0 var(--accent)" : "none",
+                opacity: n.disabled ? 0.6 : 1,
+              }}>
+              <Icon n={n.icon} s={18} style={{ color: active === n.id ? "var(--accent)" : "currentColor" }} />
+              {n.label}
+            </button>
+          ))}
+
+          {openCases.length > 0 && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)", padding: "6px 10px 8px" }}>Case Aktif ({openCases.length})</div>
+              {openCases.map((c) => {
+                const on = c.id === activeCaseId;
+                return (
+                  <div key={c.id} style={{ marginBottom: 4 }}>
+                    <div onClick={() => onSelectCase(c.id)} style={{ display: "flex", gap: 9, alignItems: "center", padding: "8px 8px 8px 10px", background: on ? "var(--accent-quiet)" : "var(--bg-subtle)", borderRadius: "var(--radius-md)", cursor: "pointer", boxShadow: on ? "inset 3px 0 0 var(--accent)" : "none" }}>
+                      {c.logo
+                        ? <img src={c.logo} alt="" style={{ width: 30, height: 30, borderRadius: 7, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 2, flexShrink: 0 }} />
+                        : <CompanyMark initials={c.initials} color={c.logoColor} size={30} radius={7} />}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.company}</span>
+                          {dirtyIds[c.id] && <span title="Belum disimpan" style={{ width: 6, height: 6, borderRadius: 999, background: "var(--warning-500)", flexShrink: 0 }} />}
+                        </div>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, color: "var(--text-muted)" }}>{c.id}</div>
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); onCloseCase(c.id); }} title="Tutup case" aria-label="Tutup case"
+                        style={{ width: 22, height: 22, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 6, background: "transparent", color: "var(--text-faint)", cursor: "pointer" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--negative-050)"; e.currentTarget.style.color = "var(--negative-600)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-faint)"; }}>
+                        <Icon n="x" s={13} />
+                      </button>
+                    </div>
+                    {on && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 4, marginLeft: 6 }}>
+                        {[["finance", "Analis Keuangan", "line-chart"], ["risk", "Risiko & Fraud", "shield-alert"], ["transform", "Transformasi", "git-branch"]].map(([id, label, icon]) => {
+                          const ran = (c.agents || []).includes(id);
+                          const job = jobs[c.id + ":" + id] || {};
+                          const busy = job.status === "running";
+                          const sel = active === "agent-" + id;
+                          const clickable = ran || busy;
+                          return (
+                            <button key={id} onClick={() => clickable && onNav("agent-" + id)} disabled={!clickable} title={clickable ? label : label + " — belum dijalankan"}
+                              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, height: 32, padding: "0 10px", border: "none", background: sel ? "var(--accent-quiet)" : "transparent", borderRadius: "var(--radius-sm)", cursor: clickable ? "pointer" : "not-allowed", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 500, color: !clickable ? "var(--text-faint)" : sel ? "var(--text-strong)" : "var(--text-muted)", opacity: clickable ? 1 : 0.55, textAlign: "left" }}>
+                              <Icon n={icon} s={15} />
+                              <span style={{ flex: 1 }}>{label}</span>
+                              {busy && <span title="Analisis berjalan" style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid var(--accent)", borderTopColor: "transparent", display: "inline-block", animation: "stx-spin 0.7s linear infinite", flexShrink: 0 }} />}
+                              {!busy && ran && <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--positive-500)", flexShrink: 0 }} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {/* Footer */}
+        <div style={{ padding: 12, borderTop: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 999, background: "var(--grad-navy)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(((user && user.name) || "P").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("") || "P").toUpperCase()}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.3, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: "var(--text-body)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120 }}>{(user && user.name) || "Pengguna"}</div>
+              <div style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120 }}>{(user && user.email) || "STRATIX"}</div>
+            </div>
+          </div>
+          <Tooltip label={theme === "dark" ? "Mode terang" : "Mode gelap"} placement="top">
+            <IconButton aria-label="tema" variant="ghost" onClick={onToggleTheme}><Icon n={theme === "dark" ? "sun" : "moon"} s={17} /></IconButton>
+          </Tooltip>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <header style={{ height: "var(--topbar-h)", flexShrink: 0, background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+            {onBack && <IconButton aria-label="kembali" variant="ghost" onClick={onBack}><Icon n="arrow-left" s={18} /></IconButton>}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "var(--text-lg)", fontWeight: 700, color: "var(--text-strong)", letterSpacing: "-0.01em", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</div>
+              {subtitle && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{subtitle}</div>}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{actions}</div>
+        </header>
+        <main style={{ flex: 1, overflowY: "auto", padding: 24 }}>{children}</main>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Lightweight charts (SVG, data-viz) ---------- */
+function LineChart({ series, labels, height = 150, color = "var(--teal-500)", fill = true, area2 }) {
+  const w = 520, h = height, pad = 8;
+  const all = area2 ? series.concat(area2) : series;
+  const max = Math.max(...all) * 1.08, min = Math.min(...all) * 0.9;
+  const x = (i, arr) => pad + (i * (w - pad * 2)) / (arr.length - 1);
+  const y = (v) => h - pad - ((v - min) / (max - min)) * (h - pad * 2 - 16);
+  const path = (arr) => arr.map((v, i) => `${i ? "L" : "M"}${x(i, arr).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const areaPath = `${path(series)} L${x(series.length - 1, series)},${h - pad} L${x(0, series)},${h - pad} Z`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={height} preserveAspectRatio="none" style={{ overflow: "visible" }}>
+      <defs>
+        <linearGradient id="stx-area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0.25, 0.5, 0.75].map((g) => <line key={g} x1={pad} x2={w - pad} y1={pad + g * (h - pad * 2)} y2={pad + g * (h - pad * 2)} stroke="var(--data-grid)" strokeWidth="1" />)}
+      {fill && <path d={areaPath} fill="url(#stx-area)" />}
+      {area2 && <path d={path(area2)} fill="none" stroke="var(--slate-400)" strokeWidth="2" strokeDasharray="4 4" />}
+      <path d={path(series)} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {series.map((v, i) => <circle key={i} cx={x(i, series)} cy={y(v)} r="3.2" fill="var(--surface)" stroke={color} strokeWidth="2" />)}
+    </svg>
+  );
+}
+
+function BarChart({ series, labels, height = 150, color = "var(--navy-700)" }) {
+  const max = Math.max(...series) * 1.1;
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height, paddingTop: 8 }}>
+      {series.map((v, i) => (
+        <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)", marginBottom: 5 }}>{v}</div>
+          <div style={{ width: "100%", maxWidth: 46, height: `${(v / max) * 100}%`, background: i === series.length - 1 ? "var(--grad-blade)" : color, borderRadius: "5px 5px 0 0", transition: "height var(--dur-slow) var(--ease-out)" }} />
+          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 7 }}>{labels[i]}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Donut({ value, size = 96, stroke = 11, color = "var(--teal-500)", track = "var(--bg-subtle)", label }) {
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c - (value / 100) * c;
+  return (
+    <div style={{ position: "relative", width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={track} strokeWidth={stroke} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{ transition: "stroke-dashoffset var(--dur-slower) var(--ease-out)" }} />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 600, color: "var(--text-strong)" }}>{value}</span>
+        {label && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{label}</span>}
+      </div>
+    </div>
+  );
+}
+
+/* Section heading */
+function SectionTitle({ eyebrow, title, right }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 14 }}>
+      <div>
+        {eyebrow && <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4 }}>{eyebrow}</div>}
+        <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--text-strong)", letterSpacing: "-0.01em" }}>{title}</div>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+Object.assign(window, { Icon, refreshIcons, CompanyMark, AppShell, LineChart, BarChart, Donut, SectionTitle });
+
+</script>
+<script type="text/babel" data-file="library.jsx">
+/* global React, CompanyMark, Icon, refreshIcons, SectionTitle */
+const LibNS = window.STRATIXDesignSystem_72cbdd;
+
+/* ---------- Pustaka Case (library) ---------- */
+function CaseLogo({ c, size = 40, radius = 10 }) {
+  if (c.logo) {
+    return <img src={c.logo} alt={c.company} style={{ width: size, height: size, borderRadius: radius, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 3, flexShrink: 0 }} />;
+  }
+  return <CompanyMark initials={c.initials} color={c.logoColor} size={size} radius={radius} />;
+}
+
+function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
+  const { Card, Badge, Input, Button } = LibNS;
+  const healthTone = { "Sehat": "positive", "Waspada": "warning", "Kritis": "negative" };
+  const [view, setView] = React.useState("table");
+  React.useEffect(refreshIcons);
+
+  const AgentDots = ({ agents }) => (
+    <div style={{ display: "flex", gap: 4 }}>
+      {agents.length ? agents.map((a) => (
+        <span key={a} title={a} style={{ width: 24, height: 24, borderRadius: 6, background: "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+          <Icon n={a === "finance" ? "line-chart" : a === "risk" ? "shield-alert" : "git-branch"} s={13} />
+        </span>
+      )) : <span style={{ fontSize: 12, color: "var(--text-faint)" }}>—</span>}
+    </div>
+  );
+
+  const cell = { padding: "12px 16px", borderBottom: "1px solid var(--border-subtle)", whiteSpace: "nowrap", verticalAlign: "middle" };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 22, alignItems: "center" }}>
+        <div style={{ flex: 1, maxWidth: 340 }}>
+          <Input prefix={<Icon n="search" s={15} />} placeholder="Cari case atau perusahaan…" />
+        </div>
+        <div style={{ flex: 1 }} />
+        {/* Toggle tabel / card */}
+        <div style={{ display: "flex", padding: 3, background: "var(--bg-subtle)", borderRadius: "var(--radius-md)", gap: 2 }}>
+          {[["table", "table-2", "Tabel"], ["card", "layout-grid", "Kartu"]].map(([m, ic, lbl]) => (
+            <button key={m} onClick={() => setView(m)} title={lbl} aria-label={lbl} style={{
+              width: 36, height: 30, border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: view === m ? "var(--surface)" : "transparent",
+              color: view === m ? "var(--accent-hover)" : "var(--text-muted)",
+              boxShadow: view === m ? "var(--shadow-xs)" : "none",
+              transition: "all var(--dur-fast) var(--ease-standard)",
+            }}><Icon n={ic} s={16} /></button>
+          ))}
+        </div>
+        <Button variant="secondary" iconLeft={<Icon n="sliders-horizontal" s={16} />}>Filter</Button>
+        <Button variant="primary" iconLeft={<Icon n="plus" s={16} />} onClick={onNew}>Case Baru</Button>
+      </div>
+
+      {/* ---- EMPTY STATE ---- */}
+      {cases.length === 0 && view === "table" && (
+        <div style={{ border: "1px dashed var(--border-strong)", borderRadius: "var(--radius-lg)", background: "var(--surface)", padding: "56px 24px", textAlign: "center" }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: "var(--grad-blade)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}><Icon n="folder-open" s={26} /></div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)" }}>Belum ada case</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6, maxWidth: 380, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>Mulai dengan membuat case baru untuk menganalisis kesehatan sebuah perusahaan.</div>
+          <div style={{ marginTop: 18 }}><Button variant="primary" iconLeft={<Icon n="plus" s={16} />} onClick={onNew}>Mulai Case Baru</Button></div>
+        </div>
+      )}
+
+      {/* ---- TABEL (default) ---- */}
+      {cases.length > 0 && view === "table" && (
+        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", overflowX: "auto", background: "var(--surface)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--text-sm)" }}>
+            <thead>
+              <tr>
+                {["Perusahaan", "Sektor", "Status", "Revenue", "Kesehatan", "Agen", ""].map((h, i) => (
+                  <th key={i} style={{
+                    textAlign: h === "Revenue" ? "right" : "left", padding: "11px 16px", whiteSpace: "nowrap",
+                    fontSize: "var(--text-xs)", fontWeight: 700, letterSpacing: "var(--ls-wide)", textTransform: "uppercase",
+                    color: "var(--text-muted)", background: "var(--bg-subtle)", borderBottom: "1px solid var(--border)",
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cases.map((c) => (
+                <tr key={c.id} onClick={() => onOpen(c)} style={{ cursor: "pointer", transition: "background var(--dur-fast) var(--ease-standard)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-sunken)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+                  <td style={cell}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <CaseLogo c={c} size={38} radius={9} />
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)", letterSpacing: "-0.01em" }}>{c.company}</div>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{c.id}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ ...cell, color: "var(--text-body)" }}>{c.sector}</td>
+                  <td style={cell}><Badge tone="brand" size="sm">{c.status}</Badge></td>
+                  <td style={{ ...cell, textAlign: "right" }}><span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--text-strong)" }}>{c.revenue}</span></td>
+                  <td style={cell}><Badge tone={healthTone[c.health]} size="sm" dot>{c.health}</Badge></td>
+                  <td style={cell}><AgentDots agents={c.agents} /></td>
+                  <td style={{ ...cell, textAlign: "right", whiteSpace: "nowrap" }}>
+                    <button onClick={(e) => { e.stopPropagation(); onDelete && onDelete(c); }} title="Hapus case" aria-label="Hapus case"
+                      style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", padding: 4, marginRight: 6, display: "inline-flex", verticalAlign: "middle", borderRadius: 6 }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--negative-600)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-faint)"; }}><Icon n="trash-2" s={15} /></button>
+                    <Icon n="chevron-right" s={16} style={{ color: "var(--text-faint)", verticalAlign: "middle" }} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ---- KARTU ---- */}
+      {view === "card" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+          <button onClick={onNew} style={{
+            minHeight: 168, border: "1.5px dashed var(--border-strong)", borderRadius: "var(--radius-lg)",
+            background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center", gap: 10, color: "var(--text-muted)",
+            fontFamily: "var(--font-sans)", transition: "all var(--dur-base) var(--ease-standard)",
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent-hover)"; e.currentTarget.style.background = "var(--accent-quiet)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "transparent"; }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--grad-blade)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n="plus" s={22} /></div>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Mulai Case Baru</span>
+            <span style={{ fontSize: 12 }}>Analisis perusahaan baru</span>
+          </button>
+
+          {cases.map((c) => (
+            <Card key={c.id} interactive onClick={() => onOpen(c)} padding="none" style={{ overflow: "hidden" }}>
+              <div style={{ padding: 18 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                  <CaseLogo c={c} size={44} radius={11} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <Badge tone={healthTone[c.health]} dot>{c.health}</Badge>
+                    <button onClick={(e) => { e.stopPropagation(); onDelete && onDelete(c); }} title="Hapus case" aria-label="Hapus case"
+                      style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", padding: 4, display: "inline-flex", borderRadius: 6 }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--negative-600)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-faint)"; }}><Icon n="trash-2" s={15} /></button>
+                  </div>
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.02em" }}>{c.id}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)", marginTop: 3, letterSpacing: "-0.01em", lineHeight: 1.25 }}>{c.company}</div>
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+                  <Badge tone="neutral" size="sm">{c.sector}</Badge>
+                  <Badge tone="brand" size="sm">{c.status}</Badge>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 18px", borderTop: "1px solid var(--border-subtle)", background: "var(--surface-sunken)" }}>
+                <div>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 600, color: "var(--text-strong)" }}>{c.revenue}</span>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)", marginLeft: 6 }}>revenue</span>
+                </div>
+                <AgentDots agents={c.agents} />
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- New Case: name + Data Primer ---------- */
+function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
+  const { Card, Input, Select, Button, Badge, Textarea, Alert, Switch } = LibNS;
+  const [step, setStep] = React.useState(1);
+  const [company, setCompany] = React.useState("");
+  const [autofilled, setAutofilled] = React.useState(false);
+  const [filling, setFilling] = React.useState(false);
+  const [form, setForm] = React.useState({ founded: "", sector: "", bidang: "", revenue: "", revenueDate: "", status: "", website: "", logo: null });
+  const [primerDocs, setPrimerDocs] = React.useState([]);
+  const [afErr, setAfErr] = React.useState("");
+  const AI = window.STX_AI;
+  const primerFileRef = React.useRef(null);
+  const onPrimerDocs = async (e) => {
+    const files = [...(e.target.files || [])].slice(0, 3 - primerDocs.length);
+    if (!files.length || !AI) return;
+    setAfErr("");
+    for (const f of files) {
+      const r = await AI.parseFile(f);
+      setPrimerDocs((prev) => [...prev, { name: r.name, ext: r.ext, chars: r.chars, text: r.text }]);
+    }
+    if (e.target) e.target.value = "";
+  };
+
+  const stripPT = (n) => n.replace(/^\s*PT\.?\s*/i, "").trim();
+  const fmtRevenue = (raw) => {
+    if (!raw) return "—";
+    const n = parseFloat(String(raw).replace(/[^\d]/g, ""));
+    if (!n || isNaN(n)) return String(raw);
+    if (n >= 1e12) return "Rp " + (n / 1e12).toFixed(2).replace(".", ",") + " T";
+    if (n >= 1e9) return "Rp " + (n / 1e9).toFixed(1).replace(".", ",") + " M";
+    if (n >= 1e6) return "Rp " + (n / 1e6).toFixed(1).replace(".", ",") + " Jt";
+    return "Rp " + n.toLocaleString("id-ID");
+  };
+  const initials = (stripPT(company).slice(0, 3) || "XXX").toUpperCase();
+  const caseId = `Case-${String(nextIndex).padStart(3, "0")}-${initials}`;
+  const [caseName, setCaseName] = React.useState("");
+
+  React.useEffect(refreshIcons);
+
+  const logoRef = React.useRef(null);
+  const onLogoPick = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => setForm((prev) => ({ ...prev, logo: r.result }));
+    r.readAsDataURL(f);
+  };
+
+  const runAutofill = async () => {
+    if (!AI || !AI.hasKey()) { setAfErr("API Key Anthropic belum diatur. Buka Pengaturan → API Key."); return; }
+    const ctx = primerDocs.map((d) => `## ${d.name}\n${d.text}`).join("\n\n");
+    if (!ctx.trim() && !form.website.trim()) { setAfErr("Unggah dokumen atau masukkan website perusahaan terlebih dahulu."); return; }
+    setFilling(true); setAfErr("");
+    try {
+      const r = await AI.analyzePrimer({ company, contextText: ctx, website: form.website });
+      setForm((f) => ({ ...f, founded: r.founded || f.founded, sector: r.sector || f.sector, bidang: r.bidang || f.bidang, revenue: r.revenue || f.revenue, revenueDate: r.revenueDate || f.revenueDate, status: r.status || f.status }));
+      if (!company && r.company) setCompany(r.company);
+      setAutofilled(true);
+    } catch (e) {
+      setAfErr("Isi otomatis gagal: " + e.message);
+    } finally {
+      setFilling(false);
+    }
+  };
+
+  const field = (label, node, hint) => (
+    <div>
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-body)", marginBottom: 6 }}>{label}</label>
+      {node}
+      {hint && <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 5 }}>{hint}</div>}
+    </div>
+  );
+
+  if (step === 1) {
+    return (
+      <div style={{ maxWidth: 620, margin: "0 auto" }}>
+        <Card padding="xl">
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Langkah 1 dari 2</div>
+          <h2 style={{ fontSize: 24, marginTop: 6 }}>Buat Case Baru</h2>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 6, marginBottom: 22 }}>Indeks case dibuat otomatis dari nomor urut dan tiga huruf pertama nama perusahaan (tanpa "PT").</p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {field("Nama perusahaan", <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="mis. PT Astra Sejahtera Tbk" />, "Awalan \"PT\" diabaikan saat membuat indeks.")}
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-end" }}>
+              <div style={{ flex: 1 }}>
+                {field("Indeks case (otomatis)", <Input value={caseId} disabled prefix={<Icon n="hash" s={15} />} />)}
+              </div>
+              <div style={{ flex: 1.4 }}>
+                {field("Nama case (dapat diedit)", <Input value={caseName} onChange={(e) => setCaseName(e.target.value)} placeholder={company ? stripPT(company) : "Perusahaan"} />)}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28 }}>
+            <Button variant="ghost" onClick={onCancel}>Batal</Button>
+            <Button variant="primary" iconRight={<Icon n="arrow-right" s={16} />} disabled={!company.trim()} onClick={() => setStep(2)}>Lanjut ke Data Primer</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto" }}>
+      <Card padding="xl">
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Langkah 2 dari 2</div>
+            <h2 style={{ fontSize: 24, marginTop: 6 }}>Data Primer Perusahaan</h2>
+          </div>
+          <Badge tone="brand"><span style={{ fontFamily: "var(--font-mono)" }}>{caseId}</span></Badge>
+        </div>
+
+        {/* Auto-fill zone */}
+        <div style={{ marginTop: 18, marginBottom: 20, padding: 16, borderRadius: "var(--radius-lg)", background: "var(--accent-quiet)", border: "1px solid var(--teal-400)" }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--grad-blade)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon n="sparkles" s={19} /></div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, color: "var(--text-strong)", fontSize: 14 }}>Isi otomatis dengan AI</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-body)", marginTop: 2 }}>Unggah hingga 3 dokumen atau masukkan website — AI akan mengisi Data Primer. Anda tetap dapat mengedit sebelum menyimpan.</div>
+              <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 200 }}><Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} prefix={<Icon n="globe" s={15} />} placeholder="website perusahaan" /></div>
+                <input ref={primerFileRef} type="file" accept=".pdf,.xlsx,.xls,.csv,.docx,.txt" multiple style={{ display: "none" }} onChange={onPrimerDocs} />
+                <Button variant="secondary" iconLeft={<Icon n="upload" s={15} />} disabled={primerDocs.length >= 3} onClick={() => primerFileRef.current && primerFileRef.current.click()}>Unggah ({primerDocs.length}/3)</Button>
+                <Button variant="accent" loading={filling} iconLeft={filling ? null : <Icon n="wand-2" s={15} />} onClick={runAutofill}>{filling ? "Membaca…" : "Isi otomatis"}</Button>
+              </div>
+              {primerDocs.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                  {primerDocs.map((d, i) => (
+                    <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-body)", background: "var(--surface)", border: "1px solid var(--border)", padding: "4px 8px", borderRadius: "var(--radius-sm)" }}>
+                      <Icon n="file-text" s={13} />{d.name}
+                      <button onClick={() => setPrimerDocs((p) => p.filter((_, j) => j !== i))} style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", display: "inline-flex", padding: 0 }}><Icon n="x" s={12} /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {afErr && <div style={{ fontSize: 12, color: "var(--negative-600)", marginTop: 10, display: "flex", gap: 6, alignItems: "flex-start" }}><Icon n="alert-circle" s={13} /> {afErr}</div>}
+            </div>
+          </div>
+        </div>
+
+        {autofilled && <div style={{ marginBottom: 18 }}><Alert tone="positive" title="Data Primer terisi otomatis">Tinjau dan sesuaikan sebelum menyimpan.</Alert></div>}
+
+        {/* Logo perusahaan */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18, padding: 14, border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", background: "var(--surface-sunken)" }}>
+          {form.logo
+            ? <img src={form.logo} alt="logo" style={{ width: 56, height: 56, borderRadius: 12, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 4, flexShrink: 0 }} />
+            : <CompanyMark initials={initials} color="#0E7C8B" size={56} radius={12} />}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>Logo perusahaan</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>Kosongkan agar AI mengenali logo otomatis dari website atau dokumen. Kini menampilkan inisial <strong>{initials}</strong>.</div>
+          </div>
+          <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onLogoPick} />
+          {form.logo && <Button variant="ghost" size="sm" onClick={() => setForm({ ...form, logo: null })}>Hapus</Button>}
+          <Button variant="secondary" size="sm" iconLeft={<Icon n="upload" s={15} />} onClick={() => logoRef.current && logoRef.current.click()}>Unggah logo</Button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {field("Nama perusahaan", <Input value={company} onChange={(e) => setForm && setCompany(e.target.value)} />)}
+          {field("Tahun berdiri", <Input value={form.founded} onChange={(e) => setForm({ ...form, founded: e.target.value })} placeholder="mis. 1994" />)}
+          {field("Sektor Industri (BI)", <Select value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="Pilih sektor (klasifikasi BI)" options={(window.STX_DATA.sectorsBI || []).concat(form.sector && !(window.STX_DATA.sectorsBI || []).includes(form.sector) ? [form.sector] : [])} />)}
+          {field("Bidang usaha", <Select value={form.bidang} onChange={(e) => setForm({ ...form, bidang: e.target.value })} placeholder="Pilih bidang usaha" options={(window.STX_DATA.bidangUsaha || []).concat(form.bidang && !(window.STX_DATA.bidangUsaha || []).includes(form.bidang) ? [form.bidang] : [])} />)}
+          {field("Revenue tahunan", <Input value={form.revenue} onChange={(e) => setForm({ ...form, revenue: e.target.value })} prefix="Rp" placeholder="4.820.000.000.000" />)}
+          {field("Per bulan / tahun", <Input type="month" value={form.revenueDate} onChange={(e) => setForm({ ...form, revenueDate: e.target.value })} />, "Periode acuan angka revenue.")}
+          <div style={{ gridColumn: "1 / -1" }}>
+            {field("Status perusahaan", <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} placeholder="Pilih status" options={["BUMN", "Multinasional", "Swasta Nasional", "SME", "UMKM"]} />)}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 26 }}>
+          <Button variant="ghost" iconLeft={<Icon n="arrow-left" s={16} />} onClick={() => setStep(1)}>Kembali</Button>
+          <Button variant="primary" iconLeft={<Icon n="check" s={16} />} onClick={() => onCreate({ id: caseId, name: caseName || (company + " — Due Diligence"), company, initials, logoColor: "#0E7C8B", logo: form.logo || null, sector: form.sector || "—", bidang: form.bidang || "", status: form.status || "—", founded: form.founded, website: form.website || "", revenue: fmtRevenue(form.revenue), revenueDate: form.revenueDate, docText: primerDocs, updated: "baru saja", agents: [], analysis: {}, health: "Sehat" })}>Simpan Data Primer</Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+Object.assign(window, { CaseLibrary, NewCaseFlow });
+
+</script>
+<script type="text/babel" data-file="workspace.jsx">
+/* global React, Icon, refreshIcons, CompanyMark, SectionTitle */
+const WsNS = window.STRATIXDesignSystem_72cbdd;
+
+function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStartJob, onClearJob, onMarkDirty, onSave, onRequestClose }) {
+  const { Card, Badge, Button, Alert, Tag, ProgressBar, Input, Textarea, Select, Dialog } = WsNS;
+  const [err, setErr] = React.useState("");
+  const [parsing, setParsing] = React.useState(false);
+  const docFileRef = React.useRef(null);
+  const [, force] = React.useReducer((x) => x + 1, 0);
+  const mark = () => { onMarkDirty && onMarkDirty(); };
+  const AI = window.STX_AI;
+  const uploaded = caseCtx.docText || [];
+  const onDocs = async (e) => {
+    const files = [...(e.target.files || [])];
+    if (!files.length || !AI) return;
+    setParsing(true); setErr("");
+    caseCtx.docText = caseCtx.docText || [];
+    for (const f of files) {
+      const r = await AI.parseFile(f);
+      caseCtx.docText.push({ name: r.name, ext: r.ext, chars: r.chars, text: r.text });
+      force();
+    }
+    setParsing(false); mark();
+  };
+  const removeDoc = (i) => { caseCtx.docText.splice(i, 1); mark(); force(); };
+  const logoRef = React.useRef(null);
+  const onLogo = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { caseCtx.logo = r.result; mark(); force(); };
+    r.readAsDataURL(f);
+  };
+
+  // ---- Edit Data Primer ----
+  const [editing, setEditing] = React.useState(false);
+  const [ef, setEf] = React.useState({});
+  const [filling, setFilling] = React.useState(false);
+  const [fillErr, setFillErr] = React.useState("");
+  const editLogoRef = React.useRef(null);
+  const openEdit = () => {
+    setEf({ company: caseCtx.company || "", founded: caseCtx.founded || "", sector: caseCtx.sector || "", bidang: caseCtx.bidang || "", status: caseCtx.status || "", revenue: caseCtx.revenue || "", revenueDate: caseCtx.revenueDate || "", website: caseCtx.website || "", logo: caseCtx.logo || null });
+    setFilling(false); setFillErr(""); setEditing(true);
+  };
+  const runAiUpdate = async () => {
+    if (!AI || !AI.hasKey()) { setFillErr("API Key Anthropic belum diatur. Buka Pengaturan → API Key."); return; }
+    const ctx = (caseCtx.docText || []).map((d) => `## ${d.name}\n${d.text}`).join("\n\n");
+    if (!ctx.trim() && !(ef.website || "").trim()) { setFillErr("Masukkan website atau unggah dokumen pada Langkah 1 terlebih dahulu."); return; }
+    setFilling(true); setFillErr("");
+    try {
+      const r = await AI.analyzePrimer({ company: ef.company, contextText: ctx, website: ef.website });
+      setEf((p) => ({ ...p, founded: r.founded || p.founded, sector: r.sector || p.sector, bidang: r.bidang || p.bidang, revenue: r.revenue || p.revenue, revenueDate: r.revenueDate || p.revenueDate, status: r.status || p.status, company: (!p.company && r.company) ? r.company : p.company }));
+    } catch (e) {
+      setFillErr("Update otomatis gagal: " + e.message);
+    } finally {
+      setFilling(false);
+    }
+  };
+  const onEditLogo = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => setEf((p) => ({ ...p, logo: r.result }));
+    r.readAsDataURL(f);
+  };
+  const saveEdit = () => {
+    Object.assign(caseCtx, { company: ef.company, founded: ef.founded, sector: ef.sector, bidang: ef.bidang, status: ef.status, revenue: ef.revenue, revenueDate: ef.revenueDate, website: ef.website, logo: ef.logo, updated: "baru saja" });
+    setEditing(false); mark(); force();
+  };
+  const efield = (label, node) => (
+    <div>
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-body)", marginBottom: 6 }}>{label}</label>
+      {node}
+    </div>
+  );
+
+  React.useEffect(refreshIcons);
+
+  const fileIcon = { pdf: "file-text", xls: "sheet", xlsx: "sheet", csv: "sheet", doc: "file-type-2", docx: "file-type-2", txt: "file-text" };
+  const jobOf = (id) => (jobs || {})[caseCtx.id + ":" + id] || {};
+  const startAgent = (id) => { setErr(""); onStartJob && onStartJob(caseCtx, id); };
+
+  return (
+    <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+      {/* Save / Close bar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div>
+          {dirty
+            ? <Badge tone="warning" dot>Perubahan belum disimpan</Badge>
+            : <span style={{ fontSize: 12, color: "var(--text-faint)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="check" s={13} /> Semua perubahan tersimpan</span>}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {dirty && <Button variant="primary" size="sm" iconLeft={<Icon n="save" s={14} />} onClick={onSave}>Simpan</Button>}
+          <Button variant="secondary" size="sm" iconLeft={<Icon n="x" s={14} />} onClick={onRequestClose}>Tutup</Button>
+        </div>
+      </div>
+
+      {/* Case header */}
+      <Card padding="lg" style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            {caseCtx.logo
+              ? <img src={caseCtx.logo} alt="logo" style={{ width: 56, height: 56, borderRadius: 14, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 4 }} />
+              : <CompanyMark initials={caseCtx.initials} color={caseCtx.logoColor} size={56} radius={14} />}
+            <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onLogo} />
+            <button onClick={() => logoRef.current && logoRef.current.click()} title="Ganti logo" style={{ position: "absolute", right: -4, bottom: -4, width: 22, height: 22, borderRadius: 999, border: "2px solid var(--surface)", background: "var(--brand)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><Icon n="camera" s={11} /></button>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>{caseCtx.id}</span>
+              <Badge tone="brand" size="sm">{caseCtx.status}</Badge>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-strong)", letterSpacing: "-0.01em", marginTop: 2 }}>{caseCtx.company}</div>
+          </div>
+          <div style={{ display: "flex", gap: 22 }}>
+            {[["Sektor", caseCtx.sector], ["Berdiri", caseCtx.founded], ["Revenue", caseCtx.revenue]].map(([k, v]) => (
+              <div key={k}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-faint)", fontWeight: 700 }}>{k}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-strong)", marginTop: 3, fontFamily: k === "Revenue" || k === "Berdiri" ? "var(--font-mono)" : "inherit" }}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <Button variant="secondary" size="sm" iconLeft={<Icon n="pencil" s={14} />} onClick={openEdit}>Edit Data Primer</Button>
+        </div>
+      </Card>
+
+      {/* Step 1: documents */}
+      <SectionTitle eyebrow="Langkah 1" title="Dokumen & Keterangan" right={<Badge tone="accent" dot>{uploaded.length ? `${uploaded.length} dokumen terunggah` : `${docs.length} contoh`}</Badge>} />
+      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 16, marginBottom: 28 }}>
+        <Card>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {uploaded.length === 0 && <div style={{ fontSize: 12, color: "var(--text-faint)", padding: "2px 2px 6px" }}>Belum ada dokumen diunggah. Contoh di bawah hanya ilustrasi — unggah dokumen asli untuk dianalisis AI.</div>}
+            {uploaded.map((d, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--teal-400)", borderRadius: "var(--radius-md)", background: "var(--accent-quiet)" }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--surface)", color: "var(--accent-hover)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon n={fileIcon[d.ext] || "file"} s={17} /></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>{d.chars.toLocaleString("id-ID")} karakter terbaca</div>
+                </div>
+                <Badge tone={d.chars > 40 ? "positive" : "warning"} size="sm" dot>{d.chars > 40 ? "terbaca" : "kosong"}</Badge>
+                <button onClick={() => removeDoc(i)} title="Hapus" style={{ width: 24, height: 24, border: "none", background: "transparent", color: "var(--text-faint)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon n="x" s={14} /></button>
+              </div>
+            ))}
+            {uploaded.length === 0 && docs.map((d) => (
+              <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", background: "var(--surface-sunken)", opacity: 0.65 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--bg-subtle)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon n={fileIcon[d.type] || "file"} s={17} /></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{d.size} · contoh</div>
+                </div>
+                <Badge tone="neutral" size="sm">{d.kind}</Badge>
+              </div>
+            ))}
+            <input ref={docFileRef} type="file" accept=".pdf,.xlsx,.xls,.csv,.docx,.txt" multiple style={{ display: "none" }} onChange={onDocs} />
+            <button onClick={() => docFileRef.current && docFileRef.current.click()} disabled={parsing} style={{ marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 44, border: "1.5px dashed var(--border-strong)", borderRadius: "var(--radius-md)", background: parsing ? "var(--bg-subtle)" : "transparent", color: "var(--text-muted)", cursor: parsing ? "wait" : "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600 }}>
+              <Icon n="upload-cloud" s={17} /> {parsing ? "Memproses dokumen…" : "Unggah dokumen (PDF, Excel, Word, teks)"}
+            </button>
+          </div>
+        </Card>
+        <Card>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)", marginBottom: 8 }}>Keterangan tambahan</div>
+          <Textarea value={caseCtx.notes || ""} onChange={(e) => { caseCtx.notes = e.target.value; mark(); force(); }} rows={4} placeholder="mis. Fokuskan pada siklus pendapatan dan piutang; soroti transaksi pihak berelasi." />
+          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>Keterangan ini disertakan sebagai konteks tambahan saat agen berjalan.</div>
+          <div style={{ marginTop: 14, fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Dokumen dikenali</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {uploaded.length
+              ? uploaded.map((d, i) => <Tag key={i} icon={<Icon n="file-text" s={12} />}>{d.name}</Tag>)
+              : <span style={{ fontSize: 12, color: "var(--text-faint)" }}>Belum ada dokumen — unggah untuk dianalisis.</span>}
+          </div>
+        </Card>
+      </div>
+
+      {/* Step 2: agent selection */}
+      {err && <div style={{ marginBottom: 14 }}><Alert tone="negative" title="Tidak dapat menjalankan analisis" onClose={() => setErr("")}>{err}</Alert></div>}
+      <SectionTitle eyebrow="Langkah 2" title="Pilih Agen Analisis" right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>Setiap agen membaca dokumen asli — bukan ringkasan.</span>} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        {agents.map((a) => {
+          const job = jobOf(a.id);
+          const isRun = job.status === "running";
+          const done = caseCtx.agents.includes(a.id);
+          return (
+            <Card key={a.id} padding="lg" style={{ position: "relative", overflow: "hidden", borderColor: isRun ? a.color : "var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: a.bg, color: a.color, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n={a.icon} s={24} /></div>
+                {isRun ? <Badge tone="accent" size="sm" dot>Berjalan</Badge> : done && <Badge tone="positive" size="sm" dot>Selesai</Badge>}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", marginTop: 14, letterSpacing: "-0.01em" }}>{a.name}</div>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55, marginTop: 7, minHeight: 74 }}>{a.desc}</p>
+              {job.status === "error" && <div style={{ fontSize: 12, color: "var(--negative-600)", marginBottom: 8, display: "flex", gap: 6, alignItems: "flex-start" }}><Icon n="alert-circle" s={13} /> {job.error}</div>}
+              {isRun ? (
+                <div style={{ marginTop: 10 }}>
+                  <ProgressBar value={job.progress || 10} tone="blade" showLabel label="Menganalisis dokumen…" />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-muted)", marginTop: 8 }}><Icon n="info" s={12} /> Berjalan di latar belakang — boleh pindah menu.</div>
+                </div>
+              ) : done ? (
+                <div style={{ marginTop: 12 }}>
+                  <Button variant="primary" block iconLeft={<Icon n="eye" s={15} />} onClick={() => onRunAgent(a.id)}>
+                    Lihat Analisis
+                  </Button>
+                  <button onClick={() => startAgent(a.id)} style={{ width: "100%", marginTop: 8, border: "none", background: "transparent", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "4px 0" }}>
+                    <Icon n="refresh-cw" s={13} /> Analisis ulang
+                  </button>
+                </div>
+              ) : (
+                <Button variant="primary" block iconLeft={<Icon n="play" s={15} />} onClick={() => startAgent(a.id)} style={{ marginTop: 12 }}>
+                  Jalankan agen
+                </Button>
+              )}
+              <div style={{ position: "absolute", right: -20, bottom: -20, opacity: 0.05, color: a.color }}><Icon n={a.icon} s={120} /></div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Dialog Edit Data Primer */}
+      <Dialog open={editing} onClose={() => setEditing(false)} title="Edit Data Primer" description={caseCtx.id} width={660}
+        footer={<><Button variant="secondary" onClick={() => setEditing(false)}>Batal</Button><Button variant="primary" iconLeft={<Icon n="check" s={15} />} onClick={saveEdit}>Simpan Perubahan</Button></>}>
+        <div style={{ maxHeight: "58vh", overflowY: "auto", paddingRight: 4 }}>
+          {/* Perbarui via AI */}
+          <div style={{ padding: 14, borderRadius: "var(--radius-md)", background: "var(--accent-quiet)", border: "1px solid var(--teal-400)", marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--grad-blade)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon n="sparkles" s={17} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>Perbarui via AI</div>
+                <div style={{ fontSize: 12, color: "var(--text-body)", marginTop: 2 }}>Masukkan atau ubah website perusahaan, AI akan memperbarui Data Primer. Tinjau sebelum menyimpan.</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 180 }}><Input value={ef.website} onChange={(e) => setEf((p) => ({ ...p, website: e.target.value }))} prefix={<Icon n="globe" s={15} />} placeholder="website perusahaan" /></div>
+                  <Button variant="accent" size="sm" loading={filling} iconLeft={filling ? null : <Icon n="wand-2" s={14} />} onClick={runAiUpdate}>{filling ? "Memperbarui…" : "Update otomatis"}</Button>
+                </div>
+                {fillErr && <div style={{ fontSize: 12, color: "var(--negative-600)", marginTop: 10, display: "flex", gap: 6, alignItems: "flex-start" }}><Icon n="alert-circle" s={13} /> {fillErr}</div>}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "var(--surface-sunken)" }}>
+            {ef.logo
+              ? <img src={ef.logo} alt="logo" style={{ width: 48, height: 48, borderRadius: 11, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 3, flexShrink: 0 }} />
+              : <CompanyMark initials={caseCtx.initials} color={caseCtx.logoColor} size={48} radius={11} />}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>Logo perusahaan</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Ganti logo, atau kosongkan agar AI mengenali otomatis.</div>
+            </div>
+            <input ref={editLogoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onEditLogo} />
+            {ef.logo && <Button variant="ghost" size="sm" onClick={() => setEf((p) => ({ ...p, logo: null }))}>Hapus</Button>}
+            <Button variant="secondary" size="sm" iconLeft={<Icon n="upload" s={14} />} onClick={() => editLogoRef.current && editLogoRef.current.click()}>Unggah</Button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            {efield("Nama perusahaan", <Input value={ef.company} onChange={(e) => setEf((p) => ({ ...p, company: e.target.value }))} />)}
+            {efield("Tahun berdiri", <Input value={ef.founded} onChange={(e) => setEf((p) => ({ ...p, founded: e.target.value }))} />)}
+            {efield("Sektor Industri (BI)", <Select value={ef.sector} onChange={(e) => setEf((p) => ({ ...p, sector: e.target.value }))} placeholder="Pilih sektor (klasifikasi BI)" options={(window.STX_DATA.sectorsBI || []).concat(ef.sector && !(window.STX_DATA.sectorsBI || []).includes(ef.sector) ? [ef.sector] : [])} />)}
+            {efield("Bidang usaha", <Select value={ef.bidang} onChange={(e) => setEf((p) => ({ ...p, bidang: e.target.value }))} placeholder="Pilih bidang usaha" options={(window.STX_DATA.bidangUsaha || []).concat(ef.bidang && !(window.STX_DATA.bidangUsaha || []).includes(ef.bidang) ? [ef.bidang] : [])} />)}
+            {efield("Revenue tahunan", <Input value={ef.revenue} onChange={(e) => setEf((p) => ({ ...p, revenue: e.target.value }))} />)}
+            {efield("Per bulan / tahun", <Input type="month" value={ef.revenueDate} onChange={(e) => setEf((p) => ({ ...p, revenueDate: e.target.value }))} />)}
+            <div style={{ gridColumn: "1 / -1" }}>
+              {efield("Status perusahaan", <Select value={ef.status} onChange={(e) => setEf((p) => ({ ...p, status: e.target.value }))} options={["BUMN", "Multinasional", "Swasta Nasional", "SME", "UMKM"]} />)}
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              {efield("Website perusahaan", <Input value={ef.website} onChange={(e) => setEf((p) => ({ ...p, website: e.target.value }))} prefix={<Icon n="globe" s={15} />} placeholder="mis. perusahaan.co.id" />)}
+            </div>
+          </div>
+        </div>
+      </Dialog>
+    </div>
+  );
+}
+
+Object.assign(window, { CaseWorkspace });
+
+</script>
+<script type="text/babel" data-file="agents.jsx">
+/* global React, Icon, refreshIcons, LineChart, BarChart, Donut, SectionTitle */
+const AgNS = window.STRATIXDesignSystem_72cbdd;
+
+/* Shared result toolbar */
+function ResultToolbar({ version = "v3", when = "Hari ini, 14:20", onExport }) {
+  const { Button, Badge, Tabs } = AgNS;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Badge tone="neutral"><span style={{ fontFamily: "var(--font-mono)" }}>{version}</span></Badge>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="clock" s={13} /> {when}</span>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <Button variant="secondary" size="sm" iconLeft={<Icon n="history" s={14} />}>Riwayat</Button>
+        <Button variant="secondary" size="sm" iconLeft={<Icon n="refresh-cw" s={14} />}>Analisis ulang</Button>
+        <Button variant="primary" size="sm" iconLeft={<Icon n="download" s={14} />} onClick={onExport}>Ekspor PDF</Button>
+      </div>
+    </div>
+  );
+}
+
+function printFinanceReport(p) {
+  const esc = stxEscape;
+  const kpiCards = (p.kpis || []).map((k) => `
+    <td style="border:1px solid #E2E8F0;padding:10px 12px;vertical-align:top;width:25%;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6B7C8E;">${esc(k.label)}</div>
+      <div style="font-size:18px;font-weight:800;color:#0E2547;margin-top:3px;">${esc(k.value)}${k.unit ? ` <span style="font-size:12px;font-weight:600;">${esc(k.unit)}</span>` : ""}</div>
+      ${k.delta ? `<div style="font-size:10.5px;color:#4E5E70;margin-top:2px;">${esc(k.delta)} ${esc(k.hint || "")}</div>` : ""}
+    </td>`).join("");
+  const ratioRows = (p.ratios || []).map((r) => `
+    <tr>
+      <td style="border:1px solid #E2E8F0;padding:6px 10px;font-size:12px;">${esc(r.r)}</td>
+      <td style="border:1px solid #E2E8F0;padding:6px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;">${esc(r.v)}</td>
+      <td style="border:1px solid #E2E8F0;padding:6px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;color:#6B7C8E;">${esc(r.b)}</td>
+      <td style="border:1px solid #E2E8F0;padding:6px 10px;font-size:12px;">${esc(r.s)}</td>
+    </tr>`).join("");
+  const reviewHtml = (p.review || []).map((sec) => `
+    <div style="margin:0 0 13px;">
+      <div style="font-size:13px;font-weight:700;color:#0E2547;margin-bottom:4px;">${esc(sec.h)}</div>
+      ${String(sec.b || "").split(/\n\s*\n|\n(?=\s*Implikasi strategis)/i).map((pp) => pp.trim() ? `<div style="font-size:12px;line-height:1.7;color:#22303F;margin:0 0 7px;">${esc(pp.trim())}</div>` : "").join("")}
+    </div>`).join("");
+  const flagColor = { negative: "#DC2626", warning: "#D97706", info: "#2563EB" };
+  const flagsHtml = (p.concerns || []).map((c, i) => `
+    <div style="border:1px solid #E2E8F0;border-left:3px solid ${flagColor[c.level] || "#D97706"};border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+      <div style="font-size:12.5px;font-weight:700;color:#0E2547;">${i + 1}. ${esc(c.title)}</div>
+      <div style="font-size:10.5px;color:#6B7C8E;margin:3px 0 6px;">${esc(c.area || "")}${c.metric ? ` &middot; ${esc(c.metric)}` : ""}${c.tren ? ` &middot; Tren: ${esc(c.tren)}` : ""}</div>
+      ${c.detail ? `<div style="font-size:11.5px;line-height:1.6;color:#22303F;"><b>Temuan:</b> ${esc(c.detail)}</div>` : ""}
+      ${c.implication ? `<div style="font-size:11.5px;line-height:1.6;color:#22303F;margin-top:3px;"><b>Implikasi:</b> ${esc(c.implication)}</div>` : ""}
+      ${c.rekomendasi ? `<div style="font-size:11.5px;line-height:1.6;color:#0E7C8B;margin-top:3px;"><b>Rekomendasi:</b> ${esc(c.rekomendasi)}</div>` : ""}
+    </div>`).join("");
+  const ov = document.createElement("div");
+  ov.id = "stx-print-chat";
+  ov.innerHTML = `
+    <style>
+      @media print { body > *:not(#stx-print-chat){ display:none !important; } #stx-print-chat{ display:block !important; } }
+      #stx-print-chat{ position:fixed; inset:0; background:#fff; z-index:99999; padding:40px 50px; overflow:auto; font-family:'Plus Jakarta Sans',sans-serif; }
+      #stx-print-chat h2{ font-size:15px; color:#0E2547; border-bottom:2px solid #12A3B4; padding-bottom:5px; margin:24px 0 12px; }
+    </style>
+    <div style="border-bottom:2px solid #0E2547;padding-bottom:14px;margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#12A3B4;">STRATIX &middot; Laporan Analisis Keuangan</div>
+      <div style="font-size:22px;font-weight:800;color:#0E2547;margin-top:5px;">${esc(p.company || "Perusahaan")}</div>
+      <div style="font-size:12px;color:#6B7C8E;margin-top:3px;">${esc(p.periodLabel || "")}${p.caseId ? ` &middot; ${esc(p.caseId)}` : ""} &middot; ${new Date().toLocaleString("id-ID")}</div>
+      ${p.verdict ? `<div style="font-size:12.5px;color:#22303F;margin-top:10px;line-height:1.6;background:#F1F5F9;border-radius:8px;padding:10px 12px;"><b>Kesimpulan Analis:</b> ${esc(p.verdict)}</div>` : ""}
+    </div>
+    <h2>Ringkasan Indikator</h2>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:8px;table-layout:fixed;"><tr>${kpiCards}</tr></table>
+    ${ratioRows ? `<table style="width:100%;border-collapse:collapse;margin-top:12px;">
+      <tr style="background:#0E2547;color:#fff;"><th style="padding:6px 10px;font-size:11px;text-align:left;">Rasio</th><th style="padding:6px 10px;font-size:11px;text-align:left;">Nilai</th><th style="padding:6px 10px;font-size:11px;text-align:left;">Benchmark</th><th style="padding:6px 10px;font-size:11px;text-align:left;">Status</th></tr>
+      ${ratioRows}</table>` : ""}
+    <h2>Uraian Analisis</h2>
+    ${reviewHtml || '<div style="font-size:12px;color:#6B7C8E;">Ulasan lengkap belum digenerate untuk periode ini. Buka tab \u201cUlasan Lengkap\u201d lalu Generate.</div>'}
+    <h2>Red Flags &amp; Concern</h2>
+    ${flagsHtml || '<div style="font-size:12px;color:#6B7C8E;">Tidak ada red flag tercatat.</div>'}`;
+  document.body.appendChild(ov);
+  window.print();
+  setTimeout(() => ov.remove(), 700);
+}
+
+/* ---------- Agen Analis Keuangan ---------- */
+function AgentFinance({ d, caseCtx, onGenerateReview }) {
+  const { Card, CardHeader, StatCard, DataTable, Badge, Alert, Tabs, Select, Button } = AgNS;
+  const [tab, setTab] = React.useState("ringkasan");
+  React.useEffect(refreshIcons);
+  const statusBadge = (s) => <Badge tone={s === "Baik" ? "positive" : "warning"} size="sm">{s}</Badge>;
+  const company = (caseCtx && caseCtx.company) || "Perusahaan";
+  const concernLabel = { negative: "Tinggi", warning: "Sedang", info: "Perhatian" };
+
+  // ---- Periode keuangan ----
+  const years = d.revenueLabels;
+  const revScale = Math.max(...((d.revenueSeries && d.revenueSeries.length) ? d.revenueSeries : [0])) >= 1000 ? 1000 : 1; // normalisasi Miliar -> Triliun bila AI kembalikan skala miliar
+  const revSeries = (d.revenueSeries || []).map((v) => v / revScale);
+  const [fromIdx, setFromIdx] = React.useState(0);
+  const [toIdx, setToIdx] = React.useState(years.length - 1);
+  const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+  const nYears = hi - lo + 1;
+  const multi = nYears > 1;
+  const startYear = years[lo], endYear = years[hi];
+  const rangeLabel = multi ? `${startYear}–${endYear}` : endYear;
+  const revSlice = revSeries.slice(lo, hi + 1);
+  const marginSlice = d.marginSeries.slice(lo, hi + 1);
+  const labelSlice = years.slice(lo, hi + 1);
+  const nums = (v, dg = 1) => (v >= 0 ? "+" : "") + v.toFixed(dg).replace(".", ",");
+  const revNow = revSeries[hi], revPrev = revSeries[hi - 1];
+  const revDelta = hi > 0 ? ((revNow - revPrev) / revPrev) * 100 : null;
+  const marNow = d.marginSeries[hi], marDelta = hi > 0 ? (marNow - d.marginSeries[hi - 1]) : null;
+  const cagr = multi ? (Math.pow(revNow / revSeries[lo], 1 / (hi - lo)) - 1) * 100 : null;
+  const fmtT = (v) => v.toFixed(2).replace(".", ",");
+  const revStart = revSeries[lo], marStart = d.marginSeries[lo], marEnd = d.marginSeries[hi];
+  const ulasanLead = multi
+    ? `Ulasan ini mencakup periode ${startYear}–${endYear} (${nYears} tahun). Sepanjang periode tersebut, pendapatan bergerak dari Rp ${fmtT(revStart)} T menjadi Rp ${fmtT(revNow)} T (CAGR ${cagr.toFixed(1).replace(".", ",")}%), dengan marjin EBITDA ${marStart.toFixed(1).replace(".", ",")}% menuju ${marEnd.toFixed(1).replace(".", ",")}%.`
+    : `Ulasan ini difokuskan pada tahun buku ${endYear}, dengan pendapatan Rp ${fmtT(revNow)} T dan marjin EBITDA ${marEnd.toFixed(1).replace(".", ",")}%.`;
+  const kpis = d.kpis.map((k, i) => {
+    if (i === 0) return { ...k, label: `Revenue FY${endYear}`, value: "Rp " + revNow.toFixed(2).replace(".", ","), unit: "T", delta: revDelta != null ? nums(revDelta) + "%" : "—", hint: multi ? `vs ${years[hi - 1]}` : "YoY" };
+    if (i === 1) return { ...k, label: `EBITDA Margin ${endYear}`, value: marNow.toFixed(1).replace(".", ","), unit: "%", delta: marDelta != null ? nums(marDelta) + "%" : "—", hint: hi > 0 ? `vs ${years[hi - 1]}` : "—" };
+    return k;
+  });
+  const setFrom = (v) => { setFromIdx(v); if (v > toIdx) setToIdx(v); };
+  const setTo = (v) => { setToIdx(v); if (v < fromIdx) setFromIdx(v); };
+  const applyPreset = (n) => { const t = years.length - 1; setToIdx(t); setFromIdx(Math.max(0, t - (n - 1))); };
+  const yearOpts = years.map((y, i) => ({ value: String(i), label: y }));
+  const periodKey = multi ? `${startYear}-${endYear}` : String(endYear);
+  const periodLabelFull = multi ? `Tahun Buku ${startYear}–${endYear}` : `Tahun Buku ${endYear}`;
+  const isFullRange = lo === 0 && hi === years.length - 1;
+  const cachedReview = (d.reviewsByPeriod && d.reviewsByPeriod[periodKey]) || (isFullRange && d.review) || null;
+  const onExportPDF = () => printFinanceReport({
+    company, caseId: caseCtx && caseCtx.id, periodLabel: periodLabelFull,
+    kpis, ratios: d.ratios, verdict: d.verdict,
+    review: cachedReview || d.review, reviewMeta: d.reviewMeta, concerns: d.concerns,
+  });
+  const [revBusy, setRevBusy] = React.useState(false);
+  const [revErr, setRevErr] = React.useState("");
+  const hasDocs = !!(caseCtx && (caseCtx.docText || []).length > 0);
+  const genReview = () => {
+    if (!onGenerateReview) return;
+    setRevErr(""); setRevBusy(true);
+    Promise.resolve(onGenerateReview(periodLabelFull, periodKey))
+      .then(() => setRevBusy(false))
+      .catch((e) => { setRevErr((e && e.message) || String(e)); setRevBusy(false); });
+  };
+
+  return (
+    <div style={{ display: "flex", gap: 20, maxWidth: 1360, margin: "0 auto", alignItems: "flex-start" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+      <ResultToolbar version="v3" onExport={onExportPDF} />
+      <div style={{ marginBottom: 22 }}>
+        <Tabs value={tab} onChange={setTab} items={[
+          { value: "ringkasan", label: "Ringkasan", icon: <Icon n="layout-dashboard" s={15} /> },
+          { value: "ulasan", label: "Ulasan Lengkap", icon: <Icon n="file-text" s={15} /> },
+          { value: "redflags", label: "Red Flags & Concern", icon: <Icon n="alert-triangle" s={15} /> },
+        ]} />
+      </div>
+
+      {/* Pemilih periode keuangan — berlaku untuk ketiga bagian */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20, padding: "12px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-muted)" }}><Icon n="calendar-range" s={15} /> Periode Keuangan</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, color: "var(--text-faint)" }}>Dari</span>
+          <div style={{ width: 92 }}><Select value={String(fromIdx)} onChange={(e) => setFrom(+e.target.value)} options={yearOpts} /></div>
+          <span style={{ fontSize: 12, color: "var(--text-faint)" }}>sampai</span>
+          <div style={{ width: 92 }}><Select value={String(toIdx)} onChange={(e) => setTo(+e.target.value)} options={yearOpts} /></div>
+        </div>
+        <Badge tone={multi ? "accent" : "neutral"} dot>{nYears} tahun</Badge>
+        <div style={{ flex: 1 }} />
+        <div style={{ display: "flex", gap: 6 }}>
+          {[["1 Thn", 1], ["3 Thn", 3], ["5 Thn", 5]].map(([lbl, n]) => (
+            <button key={lbl} onClick={() => applyPreset(n)} style={{ height: 30, padding: "0 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-strong)", background: nYears === n ? "var(--accent-quiet)" : "var(--surface)", color: nYears === n ? "var(--accent-hover)" : "var(--text-muted)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}>{lbl}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11.5, color: "var(--text-faint)", margin: "-6px 0 18px", display: "flex", alignItems: "center", gap: 6 }}>
+        <Icon n="info" s={13} /> Rentang periode mengikuti data yang tersedia pada dokumen terunggah ({years[0]}–{years[years.length - 1]}).
+      </div>
+
+      {/* ---- Bagian 1: Ringkasan ---- */}
+      {tab === "ringkasan" && (
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+            {kpis.map((k, i) => <StatCard key={k.label} {...k} accent={i === 0} icon={<Icon n={k.icon || ["trending-up", "percent", "wallet", "waves"][i] || "circle-dollar-sign"} s={18} />} />)}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, marginBottom: 20 }}>
+            <Card>
+              <CardHeader title="Tren Pendapatan" subtitle={`Rp Triliun · ${rangeLabel}`} action={multi ? <Badge tone="positive" dot>CAGR {cagr.toFixed(1).replace(".", ",")}%</Badge> : null} />
+              {revSlice.length > 1 ? (
+                <>
+                  <LineChart series={revSlice} labels={labelSlice} height={180} color="var(--teal-500)" />
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 8px" }}>
+                    {labelSlice.map((l) => <span key={l} style={{ fontSize: 11, color: "var(--text-faint)" }}>{l}</span>)}
+                  </div>
+                </>
+              ) : (
+                <div style={{ height: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 30, fontWeight: 600, color: "var(--text-strong)" }}>Rp {revNow.toFixed(2).replace(".", ",")} T</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Pendapatan FY{endYear} · pilih ≥ 2 tahun untuk tren</span>
+                </div>
+              )}
+            </Card>
+            <Card>
+              <CardHeader title="EBITDA Margin" subtitle={`% · ${rangeLabel}`} />
+              <BarChart series={marginSlice} labels={labelSlice} height={190} color="var(--navy-600)" />
+            </Card>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
+            <Card padding="none">
+              <div style={{ padding: "16px 18px 12px" }}><CardHeader title="Rasio Keuangan Utama" subtitle={`Konsolidasi FY${endYear} vs benchmark industri`} /></div>
+              <DataTable columns={[
+                { key: "r", header: "Rasio", strong: true },
+                { key: "v", header: `FY${endYear}`, mono: true, strong: true },
+                { key: "b", header: "Benchmark", mono: true },
+                { key: "s", header: "Status", align: "right", render: (v) => statusBadge(v) },
+              ]} rows={d.ratios} style={{ border: "none", borderRadius: 0 }} />
+            </Card>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <Card>
+                <CardHeader title="Skor Kesehatan" subtitle="Komposit finansial" />
+                <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                  <Donut value={d.healthScore != null ? d.healthScore : 78} label="/100" color="var(--teal-500)" size={104} />
+                  <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.55 }}>
+                    Peringkat <strong style={{ color: "var(--text-strong)" }}>{d.healthLabel || "Sehat"}</strong>. {d.verdict}
+                  </div>
+                </div>
+              </Card>
+              <Alert tone="info" title="Kesimpulan analis">{d.verdict}</Alert>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Bagian 2: Ulasan Lengkap (naratif, layak print) ---- */}
+      {tab === "ulasan" && (
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+          <Card padding="none" style={{ overflow: "hidden" }}>
+            <div style={{ background: "var(--grad-navy)", color: "#fff", padding: "26px 40px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--cyan-300)" }}>Ulasan Analisis Keuangan</div>
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6 }}>{company}</div>
+              <div style={{ display: "flex", gap: 26, marginTop: 14, flexWrap: "wrap" }}>
+                {[["Periode", multi ? `Tahun Buku ${startYear}–${endYear}` : `Tahun Buku ${endYear} (Audited)`], ["Basis", d.reviewMeta.basis], ["Disusun oleh", d.reviewMeta.prepared]].map(([k, v]) => (
+                  <div key={k}>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>{k}</div>
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 3 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ padding: "34px 40px 40px" }}>
+              <p style={{ fontSize: 13, fontStyle: "italic", color: "var(--text-muted)", margin: "0 0 26px", paddingBottom: 18, borderBottom: "1px solid var(--border)" }}>
+                Ulasan disusun dari sudut pandang Analis Keuangan — menilai kesehatan dan keberlanjutan finansial perusahaan sebagai bahan kajian lanjutan, bukan rekomendasi investasi.
+              </p>
+              <div style={{ padding: "13px 15px", background: "var(--accent-quiet)", border: "1px solid var(--teal-400)", borderRadius: "var(--radius-md)", marginBottom: 24 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--teal-700)", marginBottom: 5 }}>Cakupan Periode</div>
+                <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-body)" }}>{ulasanLead}</div>
+              </div>
+              {cachedReview ? cachedReview.map((sec) => (
+                <div key={sec.h} style={{ marginBottom: 24 }}>
+                  <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-strong)", letterSpacing: "-0.01em", margin: "0 0 9px" }}>{sec.h}</h3>
+                  {String(sec.b || "").split(/\n\s*\n|\n(?=\s*Implikasi strategis)/i).map((para, k) => {
+                    const tx = para.trim(); if (!tx) return null;
+                    const isImpl = /^implikasi/i.test(tx);
+                    return isImpl
+                      ? <p key={k} style={{ fontSize: 14.5, lineHeight: 1.7, color: "var(--text-body)", margin: "14px 0 0", padding: "11px 15px", background: "var(--accent-quiet)", borderLeft: "3px solid var(--accent)", borderRadius: 8, textWrap: "pretty" }}>{tx}</p>
+                      : <p key={k} style={{ fontSize: 15, lineHeight: 1.78, color: "var(--text-body)", margin: "0 0 13px", textAlign: "left", textWrap: "pretty" }}>{tx}</p>;
+                  })}
+                </div>
+              )) : (
+                <div style={{ textAlign: "center", padding: "36px 22px", border: "1px dashed var(--border-strong)", borderRadius: "var(--radius-lg)", background: "var(--bg-subtle)" }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-strong)" }}>Ulasan mendalam periode {rangeLabel} belum tersedia</div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", maxWidth: 480, margin: "6px auto 0", lineHeight: 1.55 }}>Ulasan disusun spesifik oleh AI untuk periode terpilih dan disimpan \u2014 memilih periode yang sama nanti tidak menjalankan ulang analisis.</div>
+                  {revErr && <div style={{ fontSize: 12.5, color: "var(--negative-600)", marginTop: 10 }}>\u26a0 {revErr}</div>}
+                  <div style={{ marginTop: 16 }}>
+                    <Button variant="primary" loading={revBusy} disabled={revBusy || !hasDocs} iconLeft={revBusy ? null : <Icon n="sparkles" s={16} />} onClick={genReview}>
+                      {revBusy ? "Menyusun ulasan\u2026" : (hasDocs ? `Buat ulasan periode ${rangeLabel}` : "Unggah dokumen dahulu")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <div style={{ marginTop: 30, paddingTop: 18, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-faint)" }}>
+                <span>STRATIX · Konsultan AI</span>
+                <span style={{ fontFamily: "var(--font-mono)" }}>Agen Analis Keuangan · v3</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ---- Bagian 3: Red Flags & Concern ---- */}
+      {tab === "redflags" && (
+        <div>
+          <Alert tone="warning" title="Catatan analitis, bukan indikasi fraud" style={{ marginBottom: 18 }}>
+            Bagian ini merangkum kelemahan dan area perhatian yang muncul dari analisis keuangan. Untuk sinyal fraud dan modus kecurangan, gunakan Agen Risiko &amp; Fraud.
+          </Alert>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.55 }}>Temuan berikut ditinjau untuk periode <strong style={{ color: "var(--text-strong)" }}>{rangeLabel}</strong> ({nYears} tahun), berdasarkan dokumen yang terunggah.</div>
+          {/* Ringkasan tingkat */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
+            {[["Tinggi", "negative"], ["Sedang", "warning"], ["Perhatian", "info"]].map(([lbl, lv]) => {
+              const n = d.concerns.filter((c) => concernLabel[c.level] === lbl).length;
+              const clr = lv === "info" ? "teal" : lv;
+              return (
+                <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 9, background: `var(--${lv}-050)`, color: `var(--${clr}-600)`, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n={lv === "negative" ? "alert-octagon" : lv === "warning" ? "alert-triangle" : "info"} s={18} /></div>
+                  <div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 600, color: "var(--text-strong)", lineHeight: 1 }}>{n}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Tingkat {lbl}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tabel ringkasan temuan */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Ringkasan Temuan · Periode {rangeLabel}</div>
+            <Badge tone="warning" dot>{d.concerns.length} area perhatian</Badge>
+          </div>
+          <div style={{ marginBottom: 22 }}>
+            <DataTable columns={[
+              { key: "no", header: "#", width: 40 },
+              { key: "title", header: "Temuan", strong: true, wrap: true },
+              { key: "area", header: "Area", render: (v) => <Badge tone="neutral" size="sm">{v}</Badge> },
+              { key: "level", header: "Tingkat", render: (v) => <Badge tone={v === "info" ? "accent" : v} size="sm">{concernLabel[v]}</Badge> },
+              { key: "nilai", header: "Nilai", mono: true, strong: true },
+              { key: "benchmark", header: "Benchmark", mono: true },
+              { key: "tren", header: "Tren", render: (v) => <Badge tone={v === "Memburuk" ? "negative" : v === "Membaik" ? "positive" : "neutral"} size="sm">{v}</Badge> },
+            ]} rows={d.concerns.map((c, i) => ({ ...c, no: i + 1 }))} />
+          </div>
+
+          {/* Uraian rinci */}
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12 }}>Uraian Rinci &amp; Rekomendasi</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {d.concerns.map((c) => (
+              <Card key={c.title} padding="md" style={{ borderLeft: `3px solid var(--${c.level === "negative" ? "negative" : c.level === "warning" ? "warning" : "teal"}-500)` }}>
+                <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 9, background: `var(--${c.level === "negative" ? "negative" : c.level === "warning" ? "warning" : "info"}-050)`, color: `var(--${c.level === "negative" ? "negative" : c.level === "warning" ? "warning" : "teal"}-600)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon n={c.level === "negative" ? "trending-down" : c.level === "warning" ? "alert-triangle" : "info"} s={18} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}>{c.title}</span>
+                      <Badge tone={c.level === "info" ? "accent" : c.level} size="sm">{concernLabel[c.level]}</Badge>
+                      <Badge tone="neutral" size="sm">{c.area}</Badge>
+                    </div>
+                    <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "7px 0 0", lineHeight: 1.55 }}>{c.detail}</p>
+                    <div style={{ fontSize: 12.5, color: "var(--text-body)", marginTop: 8, display: "flex", gap: 6 }}>
+                      <span style={{ fontWeight: 700, color: "var(--text-strong)", flexShrink: 0 }}>Implikasi:</span>
+                      <span>{c.implication}</span>
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-body)", marginTop: 6, display: "flex", gap: 6, paddingTop: 8, borderTop: "1px dashed var(--border)" }}>
+                      <span style={{ fontWeight: 700, color: "var(--positive-600)", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon n="lightbulb" s={13} />Rekomendasi:</span>
+                      <span>{c.rekomendasi}</span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-faint)", fontWeight: 700 }}>Metrik</div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 600, color: "var(--text-strong)", marginTop: 3 }}>{c.metric}</div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+      </div>
+      <div style={{ width: 356, flexShrink: 0, position: "sticky", top: 0 }}>
+        <ChatPanel caseId={caseCtx && caseCtx.id} caseName={company} agentKey="finance" agentLabel="Agen Analis Keuangan" period={rangeLabel} contextText={caseCtx && (caseCtx.docText || []).map((x) => x.text).join("\n\n")} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Agen Risiko & Fraud ---------- */
+function AgentRisk({ d, caseCtx }) {
+  const { Card, CardHeader, Badge, Alert, RiskBadge, RiskCell } = AgNS;
+  React.useEffect(refreshIcons);
+  const company = (caseCtx && caseCtx.company) || "Perusahaan";
+  const rowLabels = ["Katastropik", "Besar", "Sedang", "Kecil", "Minor"];
+  const colLabels = ["Jarang", "Kecil", "Mungkin", "Sering", "Hampir pasti"];
+  const levelOrder = [["critical", "Kritis"], ["high", "Tinggi"], ["moderate", "Sedang"], ["low", "Rendah"]];
+  const flags = d.flags || [];
+  const counts = levelOrder.map(([lv, lbl]) => [lbl, flags.filter((f) => f.level === lv).length, lv]).filter(([, n]) => n > 0);
+  // Pemetaan flag BERNOMOR ke sel matriks (impact=baris, likelihood=kolom)
+  const cellNums = {};
+  flags.forEach((f, i) => {
+    if (f.impact && f.likelihood) {
+      const ri = 5 - Math.min(5, Math.max(1, f.impact));
+      const ci = Math.min(5, Math.max(1, f.likelihood)) - 1;
+      const k = ri + "-" + ci;
+      (cellNums[k] = cellNums[k] || []).push(i + 1);
+    }
+  });
+  return (
+    <div style={{ display: "flex", gap: 20, maxWidth: 1360, margin: "0 auto", alignItems: "flex-start" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+      <ResultToolbar version="v2" />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: 16, marginBottom: 20 }}>
+        <Card>
+          <CardHeader title="Indeks Risiko Fraud" subtitle="Komposit dari 4 dimensi temuan" action={<RiskBadge level={d.level} />} />
+          <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+            <Donut value={d.score} label="/100" color="var(--risk-high)" track="var(--bg-subtle)" size={116} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+              {counts.map(([l, n, lv]) => (
+                <div key={l} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-body)" }}><span style={{ width: 8, height: 8, borderRadius: 2, background: `var(--risk-${lv})` }} />{l}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--text-strong)" }}>{n} temuan</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <CardHeader title="Matriks Risiko" subtitle="Dampak × Kemungkinan · angka = nomor red flag" />
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", fontSize: 10, color: "var(--text-faint)", textAlign: "right", paddingBottom: 18 }}>
+              {rowLabels.map((r) => <span key={r} style={{ height: 18, lineHeight: "18px" }}>{r}</span>)}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 4 }}>
+                {d.matrix.flatMap((row, ri) => row.map((lv, ci) => (
+                  <RiskCell key={ri + "-" + ci} level={lv} style={{ minHeight: 34 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center", alignItems: "center" }}>
+                      {(cellNums[ri + "-" + ci] || []).map((n) => (
+                        <span key={n} style={{ minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: "rgba(255,255,255,0.94)", color: "var(--navy-900)", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.28)" }}>{n}</span>
+                      ))}
+                    </div>
+                  </RiskCell>
+                )))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 4, marginTop: 5 }}>
+                {colLabels.map((c) => <span key={c} style={{ fontSize: 9, color: "var(--text-faint)", textAlign: "center" }}>{c}</span>)}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <SectionTitle eyebrow="Temuan" title="Red Flags & Indikasi Fraud" right={<Badge tone="negative" dot>{d.flags.length} temuan aktif</Badge>} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+        {d.flags.map((f, i) => (
+          <Card key={i} padding="md" style={{ borderLeft: `3px solid var(--risk-${f.level})` }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: `var(--risk-${f.level})`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 800 }}>{i + 1}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}>{f.title}</span>
+                  <RiskBadge level={f.level} size="sm" />
+                  <Badge tone="neutral" size="sm">{f.area}</Badge>
+                  {f.modus && <Badge tone="negative" size="sm">{f.modus}</Badge>}
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>Dampak {f.impact || "—"} × Kmk {f.likelihood || "—"}</span>
+                </div>
+                <p style={{ fontSize: 13.5, color: "var(--text-body)", marginTop: 8, lineHeight: 1.6 }}>{f.detail}</p>
+                {f.evidence && (
+                  <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--bg-subtle)", borderRadius: "var(--radius-md)", borderLeft: "2px solid var(--border-strong)" }}>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-faint)", fontWeight: 700, marginBottom: 3 }}>Bukti dari dokumen</div>
+                    <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.55 }}>{f.evidence}</div>
+                  </div>
+                )}
+                {f.implication && (
+                  <p style={{ marginTop: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55 }}>
+                    <span style={{ fontWeight: 700, color: "var(--negative-600)" }}>Implikasi: </span>{f.implication}
+                  </p>
+                )}
+                {f.action && (
+                  <div style={{ marginTop: 10, padding: "11px 13px", background: `var(--risk-${f.level}-050)`, border: `1px solid var(--risk-${f.level})`, borderRadius: "var(--radius-md)", display: "flex", gap: 9, alignItems: "flex-start" }}>
+                    <span style={{ color: `var(--risk-${f.level})`, flexShrink: 0, marginTop: 1 }}><Icon n="arrow-right" s={16} /></span>
+                    <div><div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 800, color: `var(--risk-${f.level})` }}>Tindak lanjut</div><div style={{ fontSize: 13, color: "var(--text-strong)", fontWeight: 600, lineHeight: 1.55, marginTop: 2 }}>{f.action}</div></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+      <Alert tone="negative" title="Rekomendasi tindak lanjut forensik">{d.recommendation}</Alert>
+      </div>
+      <div style={{ width: 356, flexShrink: 0, position: "sticky", top: 0 }}>
+        <ChatPanel caseId={caseCtx && caseCtx.id} caseName={company} agentKey="risk" agentLabel="Agen Risiko & Fraud" period="Analisis terkini" contextText={caseCtx && (caseCtx.docText || []).map((x) => x.text).join("\n\n")} />
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Agen Transformasi ---------- */
+function AgentTransform({ d, caseCtx }) {
+  const { Card, Badge, Alert } = AgNS;
+  React.useEffect(refreshIcons);
+  const company = (caseCtx && caseCtx.company) || "Perusahaan";
+  return (
+    <div style={{ display: "flex", gap: 20, maxWidth: 1360, margin: "0 auto", alignItems: "flex-start" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+      <ResultToolbar version="v1" />
+      {/* Ambition banner */}
+      <div style={{ background: "var(--grad-navy)", borderRadius: "var(--radius-xl)", padding: "24px 26px", color: "#fff", marginBottom: 20, position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", right: -30, top: -30, width: 200, height: 200, background: "var(--grad-blade)", opacity: 0.18, borderRadius: "50%", filter: "blur(20px)" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Badge tone="accent" style={{ background: "rgba(107,216,228,0.16)", color: "var(--cyan-200)" }}>Horizon {d.horizon}</Badge>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--cyan-300)" }}>Rencana Transformasi 5 Tahun</span>
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 12, maxWidth: 720, lineHeight: 1.4 }}>{d.ambition}</div>
+      </div>
+
+      {/* Pillars */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
+        {d.pillars.map((p) => (
+          <Card key={p.name} padding="md">
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-quiet)", color: "var(--accent-hover)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n={p.icon} s={20} /></div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)", marginTop: 11 }}>{p.name}</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--accent-hover)", fontWeight: 600, marginTop: 5 }}>{p.target}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Timeline */}
+      <SectionTitle eyebrow="Roadmap" title="Fase Transformasi Bertahap" />
+      <div style={{ position: "relative", paddingLeft: 8 }}>
+        <div style={{ position: "absolute", left: 27, top: 12, bottom: 12, width: 2, background: "var(--border)" }} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {d.phases.map((ph, i) => (
+            <div key={ph.year} style={{ display: "flex", gap: 18, alignItems: "flex-start", position: "relative" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 999, flexShrink: 0, background: i === 0 ? "var(--grad-blade)" : "var(--surface)", border: i === 0 ? "none" : "2px solid var(--border-strong)", color: i === 0 ? "#fff" : "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, zIndex: 1 }}>{i + 1}</div>
+              <Card padding="md" style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 17, fontWeight: 700, color: "var(--accent-hover)" }}>{ph.year}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}>{ph.title}</span>
+                  </div>
+                  <Badge tone="brand" size="sm">Investasi {ph.invest}</Badge>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                  {ph.items.map((it) => (
+                    <span key={it} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-body)", background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", padding: "5px 10px", borderRadius: "var(--radius-sm)" }}>
+                      <Icon n="check" s={13} style={{ color: "var(--positive-500)" }} />{it}
+                    </span>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          ))}
+        </div>
+      </div>
+      </div>
+      <div style={{ width: 356, flexShrink: 0, position: "sticky", top: 0 }}>
+        <ChatPanel caseId={caseCtx && caseCtx.id} caseName={company} agentKey="transform" agentLabel="Agen Transformasi" period={d.horizon || "5 tahun"} contextText={caseCtx && (caseCtx.docText || []).map((x) => x.text).join("\n\n")} />
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { AgentFinance, AgentRisk, AgentTransform });
+
+</script>
+<script type="text/babel" data-file="chat.jsx">
+/* global React */
+const ChatNS = window.STRATIXDesignSystem_72cbdd;
+
+function stxEscape(s) { return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
+const CHAT_GLYPH = {
+  spark: '<path d="M12 3v4"/><path d="M12 17v4"/><path d="M5 12H1"/><path d="M23 12h-4"/><path d="m6.3 6.3 2.1 2.1"/><path d="m15.6 15.6 2.1 2.1"/><path d="m17.7 6.3-2.1 2.1"/><path d="m8.4 15.6-2.1 2.1"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+};
+// React-owned inline-SVG icon (safe across re-renders).
+function ChatIcon({ n, s = 16, style = {} }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.innerHTML =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${CHAT_GLYPH[n] || ""}</svg>`;
+  }, [n, s]);
+  return <span ref={ref} style={{ display: "inline-flex", width: s, height: s, ...style }} />;
+}
+
+/* Prototype responder — jujur bahwa ini contoh; versi fungsional menjawab dari dokumen asli. */
+function cannedReply(q, period) {
+  const ql = q.toLowerCase();
+  let core;
+  if (/utang|leverage|der|solvab/.test(ql)) core = "rasio utang (DER) berada di 1,12× — sedikit di atas benchmark 1,00×. Tren peningkatan leverage perlu dipantau terhadap kovenan pinjaman.";
+  else if (/likuid|current|kas|cash/.test(ql)) core = "likuiditas tergolong kuat (Current Ratio 1,84×), namun Free Cash Flow menurun 4,2% sehingga konversi kas menjadi perhatian.";
+  else if (/margin|laba|profit|ebitda/.test(ql)) core = "marjin EBITDA menguat ke 18,3% dan laba bersih tumbuh 8,7%, mencerminkan perbaikan efisiensi operasi.";
+  else if (/persediaan|inventor|modal kerja/.test(ql)) core = "perputaran persediaan 5,4× masih di bawah benchmark 6,0×, mengindikasikan modal kerja yang menahan kas.";
+  else if (/risiko|fraud|red flag|concern/.test(ql)) core = "terdapat 5 area perhatian, dengan 1 bertingkat tinggi (Free Cash Flow) dan 3 bertingkat sedang. Rincian ada pada tab Red Flags & Concern.";
+  else core = "poin-poin utama mencakup pertumbuhan pendapatan yang konsisten, marjin yang membaik, dengan perhatian pada leverage dan konversi kas.";
+  return "Untuk periode " + period + ", " + core + "\n\n(Jawaban contoh dalam prototipe. Pada versi fungsional, Analis AI menjawab langsung dari dokumen yang Anda unggah.)";
+}
+
+function printChat(caseName, agentLabel, msgs) {
+  const rows = msgs.map((m) => `
+    <div style="margin:0 0 14px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${m.role === "ai" ? "#0E7C8B" : "#4E5E70"};margin-bottom:3px;">${m.role === "ai" ? "Analis AI" : "Anda"}</div>
+      <div style="font-size:13px;line-height:1.6;color:#22303F;white-space:pre-wrap;">${stxEscape(m.text)}</div>
+    </div>`).join("");
+  const ov = document.createElement("div");
+  ov.id = "stx-print-chat";
+  ov.innerHTML = `
+    <style>
+      @media print { body > *:not(#stx-print-chat){ display:none !important; } #stx-print-chat{ display:block !important; } }
+      #stx-print-chat{ position:fixed; inset:0; background:#fff; z-index:99999; padding:44px 54px; overflow:auto; font-family:'Plus Jakarta Sans',sans-serif; }
+    </style>
+    <div style="border-bottom:2px solid #0E2547;padding-bottom:14px;margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#12A3B4;">STRATIX · Riwayat Konsultasi</div>
+      <div style="font-size:22px;font-weight:800;color:#0E2547;margin-top:5px;">${stxEscape(caseName)}</div>
+      <div style="font-size:12px;color:#6B7C8E;margin-top:3px;">${stxEscape(agentLabel)} · ${new Date().toLocaleString("id-ID")}</div>
+    </div>
+    ${rows}`;
+  document.body.appendChild(ov);
+  window.print();
+  setTimeout(() => ov.remove(), 600);
+}
+
+function ChatPanel({ caseId, caseName, agentKey, agentLabel, period, contextText }) {
+  const { Button } = ChatNS;
+  const storeKey = `stx-chat-${caseId || "x"}-${agentKey}`;
+  const [msgs, setMsgs] = React.useState(() => {
+    try { const s = localStorage.getItem(storeKey); if (s) return JSON.parse(s); } catch (e) {}
+    return [{ role: "ai", text: "Halo, saya Analis AI STRATIX. Tanyakan hal lanjutan tentang analisis ini, atau minta kajian tambahan khusus.", ts: Date.now() }];
+  });
+  const [input, setInput] = React.useState("");
+  const [typing, setTyping] = React.useState(false);
+  const listRef = React.useRef(null);
+
+  React.useEffect(() => {
+    try { localStorage.setItem(storeKey, JSON.stringify(msgs)); } catch (e) {}
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [msgs, typing]);
+
+  const send = () => {
+    const q = input.trim(); if (!q) return;
+    const now = Date.now();
+    const history = msgs.slice(-8);
+    setMsgs((m) => [...m, { role: "user", text: q, ts: now }]);
+    setInput(""); setTyping(true);
+    const AI = window.STX_AI;
+    if (AI && AI.hasKey()) {
+      AI.chat({ history, question: q, contextText, agentLabel, period })
+        .then((ans) => setMsgs((m) => [...m, { role: "ai", text: ans, ts: Date.now() }]))
+        .catch((e) => setMsgs((m) => [...m, { role: "ai", text: "⚠ " + e.message, ts: Date.now() }]))
+        .finally(() => setTyping(false));
+    } else {
+      setTimeout(() => {
+        setMsgs((m) => [...m, { role: "ai", text: cannedReply(q, period) + "\n\n(Atur API Key Anthropic di Pengaturan agar jawaban berbasis dokumen asli.)", ts: Date.now() }]);
+        setTyping(false);
+      }, 650);
+    }
+  };
+
+  const clearChat = () => setMsgs([{ role: "ai", text: "Riwayat dibersihkan. Ada yang bisa saya bantu?", ts: Date.now() }]);
+
+  const suggestions = ["Bagaimana kondisi leverage?", "Jelaskan penurunan arus kas", "Ringkas red flags utama"];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 108px)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+      {/* header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid var(--border)", background: "var(--grad-navy)" }}>
+        <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--grad-blade)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><ChatIcon n="spark" s={16} /></div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Tanya {agentLabel}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Kajian lanjutan · {period}</div>
+        </div>
+        <button onClick={() => printChat(caseName, agentLabel, msgs)} title="Ekspor PDF" style={iconBtn}><ChatIcon n="download" s={15} /></button>
+        <button onClick={clearChat} title="Bersihkan" style={iconBtn}><ChatIcon n="trash" s={15} /></button>
+      </div>
+
+      {/* messages */}
+      <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-app)" }}>
+        {msgs.map((m, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+            <div style={{
+              maxWidth: "86%", padding: "9px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap",
+              background: m.role === "user" ? "var(--brand)" : "var(--surface)",
+              color: m.role === "user" ? "var(--text-on-brand)" : "var(--text-body)",
+              border: m.role === "user" ? "none" : "1px solid var(--border)",
+              borderBottomRightRadius: m.role === "user" ? 3 : 12,
+              borderBottomLeftRadius: m.role === "user" ? 12 : 3,
+            }}>{m.text}</div>
+          </div>
+        ))}
+        {typing && <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", paddingLeft: 4 }}>Analis AI sedang mengetik…</div>}
+      </div>
+
+      {/* suggestions */}
+      <div style={{ display: "flex", gap: 6, padding: "8px 12px 0", flexWrap: "wrap" }}>
+        {suggestions.map((s) => (
+          <button key={s} onClick={() => setInput(s)} style={{ fontSize: 11.5, padding: "5px 9px", borderRadius: 999, border: "1px solid var(--border)", background: "var(--bg-subtle)", color: "var(--text-muted)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>{s}</button>
+        ))}
+      </div>
+
+      {/* input */}
+      <div style={{ display: "flex", gap: 8, padding: 12, borderTop: "1px solid var(--border)" }}>
+        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()}
+          placeholder="Tulis pertanyaan…"
+          style={{ flex: 1, minWidth: 0, height: 38, padding: "0 12px", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)", fontSize: 13, color: "var(--text-strong)", outline: "none", background: "var(--surface)" }} />
+        <Button variant="accent" onClick={send} iconLeft={<ChatIcon n="send" s={16} />} style={{ paddingLeft: 12, paddingRight: 12 }} />
+      </div>
+    </div>
+  );
+}
+
+const iconBtn = { width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 7, background: "rgba(255,255,255,0.12)", color: "#fff", cursor: "pointer", flexShrink: 0 };
+
+window.ChatPanel = ChatPanel;
+
+</script>
+<script type="text/babel" data-file="settings.jsx">
+/* global React, Icon, refreshIcons, SectionTitle */
+const SetNS = window.STRATIXDesignSystem_72cbdd;
+
+function AkunPanel({ user, onUpdateUser }) {
+  const { Card, CardHeader, Input, Button, Alert } = SetNS;
+  const [name, setName] = React.useState((user && user.name) || "");
+  const [saved, setSaved] = React.useState(false);
+  const [err, setErr] = React.useState("");
+  React.useEffect(refreshIcons);
+  const save = () => {
+    setErr("");
+    try { const next = window.STX_AUTH.updateProfile({ name }); if (onUpdateUser) onUpdateUser(next); setSaved(true); setTimeout(() => setSaved(false), 1600); }
+    catch (e) { setErr((e && e.message) || String(e)); }
+  };
+  const logout = () => { if (window.STX_AUTH) window.STX_AUTH.logout(); if (onUpdateUser) onUpdateUser(null); };
+  return (
+    <div>
+      <SectionTitle eyebrow="Profil" title="Akun Pengguna" />
+      <Card padding="lg">
+        <CardHeader title="Identitas" subtitle="Nama tampil di aplikasi & laporan ekspor" />
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Nama</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} prefix={<Icon n="user" s={15} />} placeholder="Nama Anda" />
+          </div>
+          <div>
+            <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Email</label>
+            <Input value={(user && user.email) || ""} readOnly disabled prefix={<Icon n="mail" s={15} />} />
+            <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 6 }}>Email tidak dapat diubah.</div>
+          </div>
+          {err ? <Alert tone="warning" title="Gagal menyimpan">{err}</Alert> : null}
+          <div style={{ display: "flex", gap: 10 }}>
+            <Button variant="primary" iconLeft={<Icon n={saved ? "check" : "save"} s={15} />} onClick={save}>{saved ? "Tersimpan" : "Simpan Nama"}</Button>
+            <Button variant="secondary" iconLeft={<Icon n="log-out" s={15} />} onClick={logout}>Keluar</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function EksporPanel() {
+  const { Card, CardHeader, Button, Alert } = SetNS;
+  const [busy, setBusy] = React.useState(false);
+  const fileRef = React.useRef(null);
+  React.useEffect(refreshIcons);
+  const exportData = async () => {
+    setBusy(true);
+    try {
+      const cases = (window.STX_STORE ? await window.STX_STORE.loadCases() : null) || [];
+      const payload = { app: "STRATIX", schema: 1, exportedAt: new Date().toISOString(), count: cases.length, cases: cases };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "stratix-backup-" + new Date().toISOString().slice(0, 10) + ".json"; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (e) { alert("Gagal ekspor: " + ((e && e.message) || e)); }
+    setBusy(false);
+  };
+  const onFile = (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const obj = JSON.parse(r.result);
+        const cases = Array.isArray(obj) ? obj : (obj && Array.isArray(obj.cases) ? obj.cases : null);
+        if (!cases) throw new Error("Format berkas tidak dikenali.");
+        if (!confirm("Impor " + cases.length + " case? Ini akan menggantikan data lokal saat ini.")) return;
+        window.STX_STORE.saveCases(cases).then(() => location.reload());
+      } catch (err) { alert("Gagal impor: " + err.message); }
+    };
+    r.readAsText(f);
+  };
+  const clearData = () => {
+    if (!confirm("Hapus SEMUA case & hasil analisis dari perangkat ini? Tindakan ini permanen.")) return;
+    if (window.STX_STORE) window.STX_STORE.saveCases([]).then(() => location.reload());
+  };
+  return (
+    <div>
+      <SectionTitle eyebrow="Data" title="Ekspor & Cadangan" />
+      <Card padding="lg" style={{ marginBottom: 16 }}>
+        <CardHeader title="Cadangan Data Lokal" subtitle="Seluruh case & hasil analisis tersimpan di perangkat ini" />
+        <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.6, marginBottom: 16 }}>
+          Ekspor seluruh data (case, dokumen, hasil analisis) ke satu berkas JSON sebagai cadangan atau untuk dipindahkan ke perangkat lain. Impor akan menggantikan data lokal saat ini.
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Button variant="primary" iconLeft={<Icon n="download" s={15} />} onClick={exportData} disabled={busy}>{busy ? "Menyiapkan\u2026" : "Ekspor Cadangan (JSON)"}</Button>
+          <Button variant="secondary" iconLeft={<Icon n="upload" s={15} />} onClick={() => fileRef.current && fileRef.current.click()}>Impor Cadangan</Button>
+          <input ref={fileRef} type="file" accept="application/json,.json" onChange={onFile} style={{ display: "none" }} />
+        </div>
+      </Card>
+      <Card padding="lg">
+        <CardHeader title="Bersihkan Data" subtitle="Hapus seluruh data lokal dari perangkat ini" />
+        <div style={{ marginBottom: 14 }}><Alert tone="warning" title="Tindakan permanen">Menghapus semua case & hasil analisis dari penyimpanan perangkat ini. Pastikan sudah mengekspor cadangan bila diperlukan.</Alert></div>
+        <Button variant="secondary" iconLeft={<Icon n="trash-2" s={15} />} onClick={clearData}>Hapus Semua Data Lokal</Button>
+      </Card>
+    </div>
+  );
+}
+
+function Settings({ user, onUpdateUser }) {
+  const { Card, CardHeader, Input, Button, Badge, Switch, Alert, Tabs } = SetNS;
+  const [tab, setTab] = React.useState("ai");
+  const [provider, setProvider] = React.useState("anthropic");
+  const [show, setShow] = React.useState(false);
+  const [apiKey, setApiKey] = React.useState(() => (window.STX_AI ? window.STX_AI.getKey() : ""));
+  const [saved, setSaved] = React.useState(false);
+  const connected = !!apiKey;
+  const saveKey = () => { if (window.STX_AI) window.STX_AI.setKey(apiKey.trim()); setSaved(true); setTimeout(() => setSaved(false), 1800); };
+  React.useEffect(refreshIcons);
+
+  const providers = [
+    { id: "anthropic", name: "Anthropic", model: "Claude Sonnet 5", icon: "sparkles", color: "#0E7C8B", note: "Direkomendasikan untuk analisis dokumen panjang." },
+    { id: "gemini", name: "Google Gemini", model: "Gemini 2.5 Pro", icon: "gem", color: "#2A578C", note: "Konteks sangat besar, multimodal." },
+    { id: "openai", name: "OpenAI", model: "GPT-4o", icon: "brain-circuit", color: "#12855A", note: "Serbaguna, cepat." },
+  ];
+
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto" }}>
+      <div style={{ marginBottom: 20 }}>
+        <Tabs value={tab} onChange={setTab} items={[{ value: "ai", label: "Model AI", icon: <Icon n="cpu" s={15} /> }, { value: "akun", label: "Akun", icon: <Icon n="user" s={15} /> }, { value: "ekspor", label: "Ekspor", icon: <Icon n="file-output" s={15} /> }]} />
+      </div>
+
+      {tab === "ai" && (<React.Fragment>
+      <SectionTitle eyebrow="Konfigurasi" title="Penyedia Model AI" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
+        {providers.map((p) => {
+          const on = provider === p.id;
+          return (
+            <button key={p.id} onClick={() => setProvider(p.id)} style={{
+              textAlign: "left", padding: 16, borderRadius: "var(--radius-lg)", cursor: "pointer",
+              background: on ? "var(--accent-quiet)" : "var(--surface)",
+              border: on ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+              boxShadow: on ? "var(--shadow-sm)" : "none", transition: "all var(--dur-fast) var(--ease-standard)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--navy-900)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n={p.icon} s={19} /></div>
+                <span style={{ width: 18, height: 18, borderRadius: 999, border: on ? "5px solid var(--accent)" : "2px solid var(--border-strong)" }} />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)", marginTop: 12 }}>{p.name}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{p.model}</div>
+              <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.4 }}>{p.note}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      <Card padding="lg" style={{ marginBottom: 16 }}>
+        <CardHeader title="API Key" subtitle={`Kunci untuk ${providers.find((p) => p.id === provider).name}`} action={<Badge tone={connected ? "positive" : "neutral"} dot>{connected ? "Terhubung" : "Belum diatur"}</Badge>} />
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <Input type={show ? "text" : "password"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={provider === "anthropic" ? "sk-ant-api03-…" : "masukkan API key"} prefix={<Icon n="key-round" s={15} />}
+              suffix={<button onClick={() => setShow(!show)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 0 }}><Icon n={show ? "eye-off" : "eye"} s={16} /></button>} />
+          </div>
+          <Button variant="primary" iconLeft={<Icon n={saved ? "check" : "save"} s={15} />} onClick={saveKey}>{saved ? "Tersimpan" : "Simpan"}</Button>
+        </div>
+        {provider !== "anthropic" && <div style={{ marginTop: 10 }}><Alert tone="warning" title="Baru Anthropic yang aktif">Integrasi fungsional saat ini untuk Anthropic Claude. Gemini & OpenAI menyusul.</Alert></div>}
+        <div style={{ marginTop: 14 }}>
+          <Alert tone="info" title="Kunci disimpan di perangkat Anda">API Key hanya disimpan di browser ini (localStorage) untuk memanggil model. STRATIX tidak mengirim kunci ke server mana pun selain penyedia AI.</Alert>
+        </div>
+      </Card>
+
+      <Card padding="lg">
+        <CardHeader title="Preferensi Analisis" />
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {[["Baca dokumen asli (bukan ringkasan)", true], ["Simpan riwayat setiap analisis", true], ["Sertakan sitasi halaman dokumen", true], ["Isi otomatis Data Primer via AI", false]].map(([label, def]) => (
+            <div key={label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+              <span style={{ fontSize: 14, color: "var(--text-body)" }}>{label}</span>
+              <Switch defaultChecked={def} />
+            </div>
+          ))}
+        </div>
+      </Card>
+      </React.Fragment>)}
+      {tab === "akun" && <AkunPanel user={user} onUpdateUser={onUpdateUser} />}
+      {tab === "ekspor" && <EksporPanel />}
+    </div>
+  );
+}
+
+Object.assign(window, { Settings });
+
+</script>
+<script type="text/babel">
+const NS = window.STRATIXDesignSystem_72cbdd;
+
+function App() {
+  const D = window.STX_DATA;
+  const [theme, setTheme] = React.useState("light");
+  const [view, setView] = React.useState(() => {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get("new")) return "newcase";
+      if (q.get("app")) return "library";
+      return "landing";
+    } catch (e) { return "landing"; }
+  });
+  const [cases, setCases] = React.useState(D.cases);
+  const [openCases, setOpenCases] = React.useState([]);
+  const [activeCaseId, setActiveCaseId] = React.useState(null);
+  const [dirtyIds, setDirtyIds] = React.useState({});
+  const [pendingClose, setPendingClose] = React.useState(null);
+  const [pendingDelete, setPendingDelete] = React.useState(null);
+  const [jobs, setJobs] = React.useState({});
+  const jobTimers = React.useRef({});
+  const { Button, IconButton, Badge, Dialog } = NS;
+  const activeCase = openCases.find((c) => c.id === activeCaseId) || null;
+
+  // ---- Background analysis jobs (survive navigation) ----
+  const jobKey = (caseId, agent) => caseId + ":" + agent;
+  const setJob = (key, patch) => setJobs((j) => ({ ...j, [key]: Object.assign({}, j[key], patch) }));
+  const startJob = (caseObj, agent) => {
+    const key = jobKey(caseObj.id, agent);
+    if (jobs[key] && jobs[key].status === "running") return;
+    const AI = window.STX_AI;
+    const ctx = (caseObj.docText || []).map((d) => `## ${d.name}\n${d.text}`).join("\n\n");
+    if (agent === "finance" || agent === "risk") {
+      if (!AI || !AI.hasKey()) { setJob(key, { status: "error", error: "API Key Anthropic belum diatur. Buka Pengaturan → API Key.", progress: 0 }); return; }
+      if (ctx.trim().length < 40) { setJob(key, { status: "error", error: "Unggah dokumen keuangan terlebih dahulu agar dapat dianalisis.", progress: 0 }); return; }
+    }
+    setJob(key, { status: "running", progress: 10, error: "" });
+    clearInterval(jobTimers.current[key]);
+    jobTimers.current[key] = setInterval(() => {
+      setJobs((j) => { const cur = j[key] || {}; if (cur.status !== "running") return j; return { ...j, [key]: Object.assign({}, cur, { progress: Math.min(92, (cur.progress || 10) + 3) }) }; });
+    }, 500);
+    const finish = (patch) => { clearInterval(jobTimers.current[key]); setJob(key, patch); };
+    if (agent === "finance" && AI) {
+      AI.analyzeFinance({ company: caseObj.company, contextText: ctx })
+        .then((result) => {
+          caseObj.analysis = Object.assign({}, caseObj.analysis, { finance: result });
+          if (!caseObj.agents.includes("finance")) caseObj.agents.push("finance");
+          markDirty(caseObj.id);
+          finish({ status: "done", progress: 100 });
+        })
+        .catch((e) => finish({ status: "error", progress: 0, error: "Analisis gagal: " + e.message }));
+    } else if (agent === "risk" && AI) {
+      AI.analyzeRisk({ company: caseObj.company, contextText: ctx })
+        .then((result) => {
+          caseObj.analysis = Object.assign({}, caseObj.analysis, { risk: result });
+          if (!caseObj.agents.includes("risk")) caseObj.agents.push("risk");
+          markDirty(caseObj.id);
+          finish({ status: "done", progress: 100 });
+        })
+        .catch((e) => finish({ status: "error", progress: 0, error: "Analisis gagal: " + e.message }));
+    } else {
+      // agen contoh (transform): simulasi
+      setTimeout(() => {
+        if (!caseObj.agents.includes(agent)) caseObj.agents.push(agent);
+        markDirty(caseObj.id);
+        finish({ status: "done", progress: 100 });
+      }, 2600);
+    }
+  };
+  const clearJob = (key) => setJobs((j) => { const n = { ...j }; delete n[key]; return n; });
+
+  React.useEffect(() => { document.getElementById("root").setAttribute("data-theme", theme); }, [theme]);
+  const [user, setUser] = React.useState(() => (window.STX_AUTH ? window.STX_AUTH.currentUser() : { name: "Tamu", email: "" }));
+  const casesRef = React.useRef(cases);
+  React.useEffect(() => { casesRef.current = cases; }, [cases]);
+  const persist = React.useCallback(() => { if (window.STX_STORE) window.STX_STORE.saveCases(casesRef.current); }, []);
+  React.useEffect(() => {
+    if (!window.STX_STORE) return;
+    window.STX_STORE.loadCases().then((saved) => { if (saved && Array.isArray(saved) && saved.length) { casesRef.current = saved; setCases(saved); } });
+  }, []);
+
+  const nextIndex = (() => {
+    let max = 0;
+    (cases || []).forEach((c) => { const m = /Case-(\d+)-/.exec(c.id || ""); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+    return max + 1;
+  })();
+  const openCase = (c) => {
+    setOpenCases((prev) => (prev.some((x) => x.id === c.id) ? prev : [...prev, c]));
+    setActiveCaseId(c.id); setView("workspace");
+  };
+  const markDirty = (id) => { setDirtyIds((p) => ({ ...p, [id]: true })); persist(); };
+  const saveCase = (id) => setDirtyIds((p) => ({ ...p, [id]: false }));
+  const doClose = (id) => {
+    setOpenCases((prev) => {
+      const rest = prev.filter((c) => c.id !== id);
+      if (id === activeCaseId) {
+        if (rest.length) { setActiveCaseId(rest[rest.length - 1].id); setView("workspace"); }
+        else { setActiveCaseId(null); setView("library"); }
+      }
+      return rest;
+    });
+    setDirtyIds((p) => { const n = { ...p }; delete n[id]; return n; });
+  };
+  const requestClose = (id) => { if (dirtyIds[id]) setPendingClose(id); else doClose(id); };
+  const deleteCase = (id) => {
+    const next = cases.filter((c) => c.id !== id);
+    casesRef.current = next; setCases(next);
+    setOpenCases((prev) => prev.filter((c) => c.id !== id));
+    if (activeCaseId === id) { setActiveCaseId(null); setView("library"); }
+    setDirtyIds((p) => { const n = { ...p }; delete n[id]; return n; });
+    persist();
+  };
+  const selectCase = (id) => { setActiveCaseId(id); setView("workspace"); };
+  const nav = (v) => setView(v);
+
+  const Ic = ({ n, s = 16 }) => <Icon n={n} s={s} />;
+
+  // Header config per view
+  let title = "Pustaka Case", subtitle = `${cases.length} case tersimpan`, actions = null, onBack = null;
+  if (view === "newcase") { title = "Case Baru"; subtitle = "Buat analisis perusahaan baru"; onBack = () => setView("library"); }
+  else if (view === "workspace" && activeCase) { title = activeCase.name; subtitle = activeCase.id; }
+  else if (view.startsWith("agent-") && activeCase) {
+    const a = D.agents.find((x) => x.id === view.slice(6));
+    title = a.name; subtitle = `${activeCase.company} · ${activeCase.id}`; onBack = () => setView("workspace");
+  }
+  else if (view === "settings") { title = "Pengaturan"; subtitle = "Model AI, akun & ekspor"; }
+  else if (view === "library") { actions = <Button variant="primary" size="sm" iconLeft={<Ic n="plus" s={15} />} onClick={() => setView("newcase")}>Case Baru</Button>; }
+
+  let content;
+  if (view === "library") content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
+  else if (view === "newcase") content = <NewCaseFlow nextIndex={nextIndex} onCancel={() => setView("library")} onCreate={(c) => { const next = [c, ...cases]; casesRef.current = next; setCases(next); openCase(c); persist(); }} />;
+  else if (view === "workspace" && activeCase) content = <CaseWorkspace caseCtx={activeCase} docs={D.documents} agents={D.agents} dirty={!!dirtyIds[activeCaseId]} jobs={jobs} onStartJob={startJob} onClearJob={clearJob} onMarkDirty={() => markDirty(activeCaseId)} onSave={() => saveCase(activeCaseId)} onRequestClose={() => requestClose(activeCaseId)} onRunAgent={(id) => { setView("agent-" + id); }} />;
+  else if (view === "agent-finance" && activeCase) content = <AgentFinance d={(activeCase.analysis && activeCase.analysis.finance) || D.finance} caseCtx={activeCase} onGenerateReview={(periodLabel, periodKey) => {
+    const AI = window.STX_AI; const cObj = activeCase;
+    const ctx = (cObj.docText || []).map((x) => `## ${x.name}\n${x.text}`).join("\n\n");
+    return AI.analyzeFinanceReview({ company: cObj.company, contextText: ctx, periodLabel }).then((review) => {
+      const base = (cObj.analysis && cObj.analysis.finance) || (window.STX_DATA && window.STX_DATA.finance) || {}; const fin = Object.assign({}, base);
+      fin.reviewsByPeriod = Object.assign({}, fin.reviewsByPeriod, { [periodKey]: review });
+      cObj.analysis = Object.assign({}, cObj.analysis, { finance: fin });
+      markDirty(cObj.id);
+      return review;
+    });
+  }} />;
+  else if (view === "agent-risk" && activeCase) content = <AgentRisk d={(activeCase.analysis && activeCase.analysis.risk) || D.risk} caseCtx={activeCase} />;
+  else if (view === "agent-transform" && activeCase) content = <AgentTransform d={D.transform} caseCtx={activeCase} />;
+  else if (view === "settings") content = <Settings user={user} onUpdateUser={setUser} />;
+  else content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
+
+  if (!user) return <AuthScreen onAuth={setUser} />;
+  if (view === "landing") {
+    return <LandingScreen onContinue={() => setView("library")} onNew={() => setView("newcase")} user={user} onLogout={() => { if (window.STX_AUTH) window.STX_AUTH.logout(); setUser(null); setView("landing"); }} />;
+  }
+
+  const pc = pendingClose ? openCases.find((c) => c.id === pendingClose) : null;
+
+  return (
+    <React.Fragment>
+      <AppShell active={view} onNav={nav} user={user}
+        openCases={openCases} activeCaseId={activeCaseId} dirtyIds={dirtyIds} jobs={jobs}
+        onSelectCase={selectCase} onCloseCase={requestClose}
+        theme={theme} onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
+        title={title} subtitle={subtitle} actions={actions} onBack={onBack}>
+        {content}
+      </AppShell>
+      <Dialog open={!!pendingClose} onClose={() => setPendingClose(null)} title="Perubahan belum disimpan"
+        description={pc ? `Case ${pc.id} memiliki perubahan yang belum disimpan. Apa yang ingin dilakukan?` : ""} width={460}
+        footer={<React.Fragment>
+          <Button variant="ghost" onClick={() => setPendingClose(null)}>Batal</Button>
+          <Button variant="secondary" onClick={() => { const id = pendingClose; setPendingClose(null); doClose(id); }}>Tutup tanpa simpan</Button>
+          <Button variant="primary" iconLeft={<Ic n="save" s={15} />} onClick={() => { const id = pendingClose; saveCase(id); setPendingClose(null); doClose(id); }}>Simpan &amp; tutup</Button>
+        </React.Fragment>} />
+      <Dialog open={!!pendingDelete} onClose={() => setPendingDelete(null)} title="Hapus case?"
+        description={pendingDelete ? `${pendingDelete.company} · ${pendingDelete.id}` : ""} width={460}
+        footer={<React.Fragment>
+          <Button variant="ghost" onClick={() => setPendingDelete(null)}>Batal</Button>
+          <Button variant="primary" iconLeft={<Ic n="trash-2" s={15} />} onClick={() => { const id = pendingDelete.id; setPendingDelete(null); deleteCase(id); }}>Hapus permanen</Button>
+        </React.Fragment>}>
+        <div style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.6 }}>Case ini beserta seluruh dokumen dan hasil analisis yang tersimpan akan dihapus permanen dari perangkat ini. Tindakan ini tidak dapat dibatalkan.</div>
+      </Dialog>
+    </React.Fragment>
+  );
+}
+
+const start = () => {
+  if (!window.CaseLibrary || !window.AppShell || !window.Settings || !window.LandingScreen || !window.AuthScreen || !window.ChatPanel) return setTimeout(start, 30);
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+};
+start();
+</script>
+</body>
+</html>
