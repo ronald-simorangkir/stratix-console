@@ -402,7 +402,9 @@ function fmtChartNum(v, unit) {
   if (unit === "×") return v.toFixed(2).replace(".", ",") + "×";
   const a = Math.abs(v);
   if (a >= 1000) return (v / 1000).toFixed(2).replace(".", ",") + " T";
-  return v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (a >= 1) return Math.round(v).toLocaleString("id-ID") + " M";
+  if (a > 0) return Math.round(v * 1000).toLocaleString("id-ID") + " Jt";
+  return "0";
 }
 function maxAbs(arr) { const n = arr.filter((x) => x != null && !isNaN(x)); return n.length ? Math.max(...n.map(Math.abs)) : 0; }
 function scaleOf(vals) {
@@ -438,7 +440,7 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
   const sL = scaleOf(dual ? A.v : (B ? A.v.concat(B.v) : A.v));
   const sR = dual ? scaleOf(B.v) : sL;
 
-  const W = 640, H = height, padL = 52, padR = dual ? 52 : 14, padT = 22, padB = 26;
+  const W = 640, H = height, padL = 14, padR = 14, padT = 30, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB, n = yrs.length;
   const xAt = (i) => padL + (n <= 1 ? plotW / 2 : (i * plotW) / (n - 1));
   const yOf = (v, s) => padT + plotH - ((v - s.min) / (s.max - s.min)) * plotH;
@@ -451,7 +453,7 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
     return d.trim();
   }
   const barGroupW = plotW / Math.max(n, 1);
-  const barW = Math.min(30, barGroupW * (B ? 0.32 : 0.5));
+  const barW = Math.min(46, barGroupW * (B ? 0.42 : 0.66));
 
   return (
     <div>
@@ -467,25 +469,23 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: "visible" }}>
           {gridY.map((gy, i) => <line key={i} x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="var(--data-grid)" strokeWidth="1" />)}
-          {tickVals(sL).map((tv, i) => <text key={"l" + i} x={padL - 6} y={gridY[i] + 3} textAnchor="end" fontSize="9.5" fill="var(--text-faint)" fontFamily="var(--font-mono)">{fmtChartNum(tv, A.unit)}</text>)}
-          {dual ? tickVals(sR).map((tv, i) => <text key={"r" + i} x={W - padR + 6} y={gridY[i] + 3} textAnchor="start" fontSize="9.5" fill="var(--text-faint)" fontFamily="var(--font-mono)">{fmtChartNum(tv, B.unit)}</text>) : null}
-          {yrs.map((yr, i) => <text key={yr} x={xAt(i)} y={H - 8} textAnchor="middle" fontSize="10.5" fill="var(--text-muted)">{yr}</text>)}
+          {yrs.map((yr, i) => <text key={yr} x={xAt(i)} y={H - 10} textAnchor="middle" fontSize="13" fontWeight="600" fill="var(--text-muted)">{yr}</text>)}
 
           {mode === "bar" ? (
             <g>
               {A.v.map((v, i) => v == null ? null : <rect key={"a" + i} x={xAt(i) - (B ? barW + 2 : barW / 2)} y={Math.min(yOf(v, sL), yOf(0, sL))} width={barW} height={Math.abs(yOf(v, sL) - yOf(0, sL))} rx="3" fill={i === n - 1 && !B ? "var(--grad-blade, var(--teal-500))" : A.color} />)}
-              {A.v.map((v, i) => v == null ? null : <text key={"at" + i} x={xAt(i) - (B ? barW / 2 + 1 : 0)} y={yOf(v, sL) - 5} textAnchor="middle" fontSize="9.5" fontFamily="var(--font-mono)" fill="var(--text-body)">{fmtChartNum(v, A.unit)}</text>)}
+              {A.v.map((v, i) => v == null ? null : <text key={"at" + i} x={xAt(i) - (B ? barW / 2 + 1 : 0)} y={yOf(v, sL) - 7} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
               {B ? B.v.map((v, i) => v == null ? null : <rect key={"b" + i} x={xAt(i) + 2} y={Math.min(yOf(v, sR), yOf(0, sR))} width={barW} height={Math.abs(yOf(v, sR) - yOf(0, sR))} rx="3" fill={B.color} />) : null}
-              {B ? B.v.map((v, i) => v == null ? null : <text key={"bt" + i} x={xAt(i) + barW / 2 + 2} y={yOf(v, sR) - 5} textAnchor="middle" fontSize="9.5" fontFamily="var(--font-mono)" fill="var(--text-muted)">{fmtChartNum(v, B.unit)}</text>) : null}
+              {B ? B.v.map((v, i) => v == null ? null : <text key={"bt" + i} x={xAt(i) + barW / 2 + 2} y={yOf(v, sR) - 7} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
             </g>
           ) : (
             <g>
               <path d={linePath(A.v, sL)} fill="none" stroke={A.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
               {A.v.map((v, i) => v == null ? null : <circle key={"ac" + i} cx={xAt(i)} cy={yOf(v, sL)} r="3.4" fill="var(--surface)" stroke={A.color} strokeWidth="2" />)}
-              {A.v.map((v, i) => v == null ? null : <text key={"al" + i} x={xAt(i)} y={yOf(v, sL) - 9} textAnchor="middle" fontSize="9.5" fontFamily="var(--font-mono)" fill="var(--text-body)">{fmtChartNum(v, A.unit)}</text>)}
+              {A.v.map((v, i) => v == null ? null : <text key={"al" + i} x={xAt(i)} y={yOf(v, sL) - 11} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
               {B ? <path d={linePath(B.v, sR)} fill="none" stroke={B.color} strokeWidth="2.5" strokeDasharray="5 4" strokeLinejoin="round" /> : null}
               {B ? B.v.map((v, i) => v == null ? null : <circle key={"bc" + i} cx={xAt(i)} cy={yOf(v, sR)} r="3.4" fill="var(--surface)" stroke={B.color} strokeWidth="2" />) : null}
-              {B ? B.v.map((v, i) => v == null ? null : <text key={"bl" + i} x={xAt(i)} y={yOf(v, sR) + 15} textAnchor="middle" fontSize="9.5" fontFamily="var(--font-mono)" fill="var(--text-muted)">{fmtChartNum(v, B.unit)}</text>) : null}
+              {B ? B.v.map((v, i) => v == null ? null : <text key={"bl" + i} x={xAt(i)} y={yOf(v, sR) + 20} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
             </g>
           )}
         </svg>
@@ -1403,7 +1403,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
               <Card>
                 <CardHeader title="Skor Kesehatan" subtitle="Komposit finansial" />
                 <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-                  <Donut value={d.healthScore != null ? d.healthScore : 78} label="/100" color="var(--teal-500)" size={104} />
+                  <Donut value={d.healthScore != null ? d.healthScore : 78} label="/100" color={/kritis/i.test(d.healthLabel || "") ? "var(--negative-500)" : /waspada/i.test(d.healthLabel || "") ? "var(--warning-500)" : "var(--positive-500)"} size={104} />
                   <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.55 }}>
                     Peringkat <strong style={{ color: "var(--text-strong)" }}>{d.healthLabel || "Sehat"}</strong>. {d.verdict}
                   </div>
@@ -1626,6 +1626,14 @@ function AgentRisk({ d, caseCtx }) {
               ))}
             </div>
           </div>
+          <div style={{ marginTop: 16, borderTop: "1px solid var(--border-subtle)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {d.mscore ? <Badge tone={/manipulasi/i.test(d.mscore.verdict || "") ? "negative" : /abu/i.test(d.mscore.verdict || "") ? "warning" : "positive"} dot>M-Score: {d.mscore.verdict}</Badge> : null}
+              {d.fscore ? <Badge tone={/lemah/i.test(d.fscore.verdict || "") ? "negative" : /sedang/i.test(d.fscore.verdict || "") ? "warning" : "positive"} dot>F-Score: {d.fscore.value}/9 ({d.fscore.verdict})</Badge> : null}
+            </div>
+            {d.summary ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.6 }}>{d.summary}</div> : null}
+            {d.recommendation ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.6, background: "var(--bg-subtle)", borderLeft: "3px solid var(--risk-high)", borderRadius: 8, padding: "10px 12px" }}><strong style={{ color: "var(--text-strong)" }}>Rekomendasi: </strong>{d.recommendation}</div> : null}
+          </div>
         </Card>
         <Card>
           <CardHeader title="Skor Forensik Laporan Keuangan" subtitle="Beneish M-Score & Piotroski F-Score · tahun terakhir" />
@@ -1673,7 +1681,6 @@ function AgentRisk({ d, caseCtx }) {
           </Card>
         ))}
       </div>
-      <Alert tone="negative" title="Rekomendasi tindak lanjut forensik">{d.recommendation}</Alert>
       </div>
       <ChatDock>
         <ChatPanel caseId={caseCtx && caseCtx.id} caseName={company} agentKey="risk" agentLabel="Agen Risiko & Fraud" period="Analisis terkini" contextText={caseCtx && window.STX_AI.buildContext(caseCtx.docText, 160000)} />
@@ -1684,117 +1691,216 @@ function AgentRisk({ d, caseCtx }) {
 
 /* ---------- Agen Transformasi ---------- */
 function AgentTransform({ d, caseCtx }) {
-  const { Card, Badge, Alert } = AgNS;
+  const { Card, Badge, Alert, Tabs } = AgNS;
+  const [ttab, setTtab] = React.useState("ringkasan");
   React.useEffect(refreshIcons);
   const company = (caseCtx && caseCtx.company) || "Perusahaan";
+  const rpM = (v) => (v == null || isNaN(v)) ? "—" : Math.round(v).toLocaleString("id-ID");
+  const persColors = { "Keuangan": "var(--accent)", "Pelanggan": "#3B82F6", "Proses Internal": "#8B5CF6", "Pembelajaran & Pertumbuhan": "#16A34A" };
+  const proj = d.projection || null;
+  const yearsHead = (proj && proj.labels) ? proj.labels : (d.targets || []).map((t) => t.year);
+  const projTable = (title, rows, labels) => (
+    <Card padding="none" style={{ marginBottom: 16 }}>
+      <div style={{ padding: "14px 16px 8px" }}><div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)" }}>{title}</div><div style={{ fontSize: 11, color: "var(--text-faint)" }}>Rp Miliar</div></div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+          <thead><tr style={{ background: "var(--bg-subtle)" }}>
+            <th style={{ textAlign: "left", padding: "8px 14px", color: "var(--text-muted)", fontWeight: 600 }}>Item</th>
+            {labels.map((y) => <th key={y} style={{ textAlign: "right", padding: "8px 14px", color: "var(--text-muted)", fontWeight: 600, fontFamily: "var(--font-mono)" }}>{y}</th>)}
+          </tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                <td style={{ padding: "8px 14px", color: "var(--text-body)", fontWeight: 600 }}>{r.item || r.segment}</td>
+                {(r.values || []).map((v, k) => <td key={k} style={{ padding: "8px 14px", textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text-strong)" }}>{rpM(v)}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
       <ResultToolbar version="v1" />
-      <div style={{ background: "var(--grad-navy)", borderRadius: "var(--radius-xl)", padding: "24px 26px", color: "#fff", marginBottom: 20, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: -30, top: -30, width: 200, height: 200, background: "var(--grad-blade)", opacity: 0.18, borderRadius: "50%", filter: "blur(20px)" }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Badge tone="accent" style={{ background: "rgba(107,216,228,0.16)", color: "var(--cyan-200)" }}>Horizon {d.horizon}</Badge>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--cyan-300)" }}>Rencana Transformasi 5 Tahun</span>
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 12, maxWidth: 760, lineHeight: 1.4 }}>{d.ambition}</div>
-        {d.context ? <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.82)", marginTop: 12, maxWidth: 760, lineHeight: 1.6 }}>{d.context}</div> : null}
+      <div style={{ marginBottom: 18 }}>
+        <Tabs value={ttab} onChange={setTtab} items={[
+          { value: "ringkasan", label: "Ringkasan", icon: <Icon n="rocket" s={15} /> },
+          { value: "roadmap", label: "Roadmap", icon: <Icon n="map" s={15} /> },
+          { value: "kpi", label: "Balanced Scorecard", icon: <Icon n="target" s={15} /> },
+          { value: "proyeksi", label: "Proyeksi Keuangan", icon: <Icon n="line-chart" s={15} /> },
+        ]} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 24 }}>
-        {d.pillars.map((p) => (
-          <Card key={p.name} padding="md">
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-quiet)", color: "var(--accent-hover)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n={p.icon} s={20} /></div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)", marginTop: 11 }}>{p.name}</div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--accent-hover)", fontWeight: 600, marginTop: 5 }}>{p.target}</div>
-          </Card>
-        ))}
-      </div>
-
-      {Array.isArray(d.quickWins) && d.quickWins.length ? (
-        <div style={{ marginBottom: 24 }}>
-          <SectionTitle eyebrow="0–12 bulan" title="Quick Wins" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-            {d.quickWins.map((q, i) => (
-              <Card key={i} padding="md">
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-strong)" }}>{q.title}</span>
-                  {q.theme ? <Badge tone="brand" size="sm">{q.theme}</Badge> : null}
-                </div>
-                {q.impact ? <div style={{ fontSize: 12.5, color: "var(--accent-hover)", fontWeight: 600, marginTop: 6 }}>{q.impact}</div> : null}
-                {q.timeframe ? <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>{q.timeframe}</div> : null}
-              </Card>
-            ))}
+      {ttab === "ringkasan" && (<React.Fragment>
+        <div style={{ background: "var(--grad-navy)", borderRadius: "var(--radius-xl)", padding: "24px 26px", color: "#fff", marginBottom: 20, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", right: -30, top: -30, width: 200, height: 200, background: "var(--grad-blade)", opacity: 0.18, borderRadius: "50%", filter: "blur(20px)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Badge tone="accent" style={{ background: "rgba(107,216,228,0.16)", color: "var(--cyan-200)" }}>Horizon {d.horizon}</Badge>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--cyan-300)" }}>Rencana Transformasi 5 Tahun</span>
           </div>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 12, maxWidth: 760, lineHeight: 1.4 }}>{d.ambition}</div>
+          {d.context ? <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.82)", marginTop: 12, maxWidth: 760, lineHeight: 1.6 }}>{d.context}</div> : null}
         </div>
-      ) : null}
-
-      <SectionTitle eyebrow="Roadmap" title="Fase Transformasi Bertahap" />
-      <div style={{ position: "relative", paddingLeft: 8 }}>
-        <div style={{ position: "absolute", left: 27, top: 12, bottom: 12, width: 2, background: "var(--border)" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {d.phases.map((ph, i) => (
-            <div key={ph.year} style={{ display: "flex", gap: 18, alignItems: "flex-start", position: "relative" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 999, flexShrink: 0, background: i === 0 ? "var(--grad-blade)" : "var(--surface)", border: i === 0 ? "none" : "2px solid var(--border-strong)", color: i === 0 ? "#fff" : "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, zIndex: 1 }}>{i + 1}</div>
-              <Card padding="md" style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 17, fontWeight: 700, color: "var(--accent-hover)" }}>{ph.year}</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}>{ph.title}</span>
-                  </div>
-                  {ph.invest ? <Badge tone="brand" size="sm">Investasi {ph.invest}</Badge> : null}
-                </div>
-                {ph.kpi ? <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>KPI utama: {ph.kpi}</div> : null}
-                {Array.isArray(ph.initiatives) ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-                    {ph.initiatives.map((it, k) => (
-                      <div key={k} style={{ border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: "10px 12px", background: "var(--surface-sunken)" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>{it.name}</span>
-                          {it.theme ? <Badge tone="neutral" size="sm">{it.theme}</Badge> : null}
-                        </div>
-                        {it.desc ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.55, marginTop: 5 }}>{it.desc}</div> : null}
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 7 }}>
-                          {it.impact_quant ? <span style={{ fontSize: 12, color: "var(--positive-600)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="trending-up" s={13} />{it.impact_quant}</span> : null}
-                          {it.impact_other ? <span style={{ fontSize: 12, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="target" s={13} />{it.impact_other}</span> : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                    {(ph.items || []).map((it) => (
-                      <span key={it} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-body)", background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", padding: "5px 10px", borderRadius: "var(--radius-sm)" }}>
-                        <Icon n="check" s={13} style={{ color: "var(--positive-500)" }} />{it}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 22 }}>
+          {(d.pillars || []).map((p) => (
+            <Card key={p.name} padding="md">
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-quiet)", color: "var(--accent-hover)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n={p.icon} s={20} /></div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)", marginTop: 11 }}>{p.name}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--accent-hover)", fontWeight: 600, marginTop: 5 }}>{p.target}</div>
+            </Card>
           ))}
         </div>
-      </div>
+        {Array.isArray(d.targets) && d.targets.length ? (
+          <div style={{ marginBottom: 22 }}>
+            <SectionTitle eyebrow="Sasaran" title="Sasaran Utama per Tahun" />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 10 }}>
+              {d.targets.map((tg, i) => (
+                <Card key={i} padding="md">
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700, color: "var(--accent-hover)" }}>{tg.year}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-body)", lineHeight: 1.5, marginTop: 6 }}>{tg.target}</div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {Array.isArray(d.quickWins) && d.quickWins.length ? (
+          <div style={{ marginBottom: 22 }}>
+            <SectionTitle eyebrow="0–12 bulan" title="Quick Wins" />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+              {d.quickWins.map((q, i) => (
+                <Card key={i} padding="md">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-strong)" }}>{q.title}</span>
+                    {q.theme ? <Badge tone="brand" size="sm">{q.theme}</Badge> : null}
+                  </div>
+                  {q.impact ? <div style={{ fontSize: 12.5, color: "var(--accent-hover)", fontWeight: 600, marginTop: 6 }}>{q.impact}</div> : null}
+                </Card>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {Array.isArray(d.review) && d.review.length ? (
+          <div>
+            <SectionTitle eyebrow="Analisis" title="Ulasan Transformasi" />
+            <Card padding="lg">
+              {d.review.map((sec) => (
+                <div key={sec.h} style={{ marginBottom: 22 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", margin: "0 0 8px" }}>{sec.h}</h3>
+                  {String(sec.b || "").split(/\n\s*\n|\n(?=\s*Implikasi strategis)/i).map((para, k) => {
+                    const tx = para.trim(); if (!tx) return null;
+                    const isImpl = /^implikasi/i.test(tx);
+                    return isImpl
+                      ? <p key={k} style={{ fontSize: 14, lineHeight: 1.7, color: "var(--text-body)", margin: "12px 0 0", padding: "11px 15px", background: "var(--accent-quiet)", borderLeft: "3px solid var(--accent)", borderRadius: 8 }}>{tx}</p>
+                      : <p key={k} style={{ fontSize: 14.5, lineHeight: 1.75, color: "var(--text-body)", margin: "0 0 12px", textAlign: "left" }}>{tx}</p>;
+                  })}
+                </div>
+              ))}
+            </Card>
+          </div>
+        ) : null}
+      </React.Fragment>)}
 
-      {Array.isArray(d.review) && d.review.length ? (
-        <div style={{ marginTop: 28 }}>
-          <SectionTitle eyebrow="Analisis" title="Ulasan Transformasi" />
-          <Card padding="lg">
-            {d.review.map((sec) => (
-              <div key={sec.h} style={{ marginBottom: 22 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", margin: "0 0 8px" }}>{sec.h}</h3>
-                {String(sec.b || "").split(/\n\s*\n|\n(?=\s*Implikasi strategis)/i).map((para, k) => {
-                  const tx = para.trim(); if (!tx) return null;
-                  const isImpl = /^implikasi/i.test(tx);
-                  return isImpl
-                    ? <p key={k} style={{ fontSize: 14, lineHeight: 1.7, color: "var(--text-body)", margin: "12px 0 0", padding: "11px 15px", background: "var(--accent-quiet)", borderLeft: "3px solid var(--accent)", borderRadius: 8 }}>{tx}</p>
-                    : <p key={k} style={{ fontSize: 14.5, lineHeight: 1.75, color: "var(--text-body)", margin: "0 0 12px", textAlign: "left" }}>{tx}</p>;
-                })}
-              </div>
-            ))}
-          </Card>
+      {ttab === "roadmap" && (
+        <div>
+          <SectionTitle eyebrow="Roadmap" title="Fase Transformasi Bertahap" />
+          <div style={{ position: "relative", paddingLeft: 8 }}>
+            <div style={{ position: "absolute", left: 27, top: 12, bottom: 12, width: 2, background: "var(--border)" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {(d.phases || []).map((ph, i) => (
+                <div key={ph.year} style={{ display: "flex", gap: 18, alignItems: "flex-start", position: "relative" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 999, flexShrink: 0, background: i === 0 ? "var(--grad-blade)" : "var(--surface)", border: i === 0 ? "none" : "2px solid var(--border-strong)", color: i === 0 ? "#fff" : "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13, zIndex: 1 }}>{i + 1}</div>
+                  <Card padding="md" style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 17, fontWeight: 700, color: "var(--accent-hover)" }}>{ph.year}</span>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}>{ph.title}</span>
+                      </div>
+                      {ph.invest ? <Badge tone="brand" size="sm">Investasi {ph.invest}</Badge> : null}
+                    </div>
+                    {ph.kpi ? <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>KPI utama: {ph.kpi}</div> : null}
+                    {Array.isArray(ph.initiatives) ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                        {ph.initiatives.map((it, k) => (
+                          <div key={k} style={{ border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: "10px 12px", background: "var(--surface-sunken)" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>{it.name}</span>
+                              {it.theme ? <Badge tone="neutral" size="sm">{it.theme}</Badge> : null}
+                            </div>
+                            {it.desc ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.55, marginTop: 5 }}>{it.desc}</div> : null}
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 7 }}>
+                              {it.impact_quant ? <span style={{ fontSize: 12, color: "var(--positive-600)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="trending-up" s={13} />{it.impact_quant}</span> : null}
+                              {it.impact_other ? <span style={{ fontSize: 12, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="target" s={13} />{it.impact_other}</span> : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                        {(ph.items || []).map((it) => (
+                          <span key={it} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-body)", background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", padding: "5px 10px", borderRadius: "var(--radius-sm)" }}>
+                            <Icon n="check" s={13} style={{ color: "var(--positive-500)" }} />{it}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      ) : null}
+      )}
+
+      {ttab === "kpi" && (
+        <div>
+          <SectionTitle eyebrow="Balanced Scorecard" title="Rancangan KPI per Tahun" right={<Badge tone="neutral" dot>{(d.scorecard || []).length} KPI</Badge>} />
+          {Array.isArray(d.scorecard) && d.scorecard.length ? (
+            ["Keuangan", "Pelanggan", "Proses Internal", "Pembelajaran & Pertumbuhan"].map((persp) => {
+              const rows = d.scorecard.filter((k) => k.perspective === persp);
+              if (!rows.length) return null;
+              return (
+                <Card key={persp} padding="none" style={{ marginBottom: 14 }}>
+                  <div style={{ padding: "12px 16px", borderLeft: `4px solid ${persColors[persp] || "var(--accent)"}`, fontSize: 13.5, fontWeight: 700, color: "var(--text-strong)" }}>{persp}</div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                      <thead><tr style={{ background: "var(--bg-subtle)" }}>
+                        <th style={{ textAlign: "left", padding: "7px 14px", color: "var(--text-muted)", fontWeight: 600 }}>KPI</th>
+                        <th style={{ textAlign: "left", padding: "7px 8px", color: "var(--text-muted)", fontWeight: 600 }}>Satuan</th>
+                        {yearsHead.map((y) => <th key={y} style={{ textAlign: "right", padding: "7px 12px", color: "var(--text-muted)", fontWeight: 600, fontFamily: "var(--font-mono)" }}>{y}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {rows.map((k, i) => (
+                          <tr key={i} style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                            <td style={{ padding: "8px 14px", color: "var(--text-body)", fontWeight: 600 }}>{k.kpi}</td>
+                            <td style={{ padding: "8px 8px", color: "var(--text-faint)", fontSize: 11.5 }}>{k.unit}</td>
+                            {(k.values || []).map((v, j) => <td key={j} style={{ padding: "8px 12px", textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text-strong)" }}>{v == null ? "—" : (typeof v === "number" ? v.toLocaleString("id-ID") : v)}</td>)}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              );
+            })
+          ) : <Card padding="lg"><div style={{ fontSize: 13, color: "var(--text-muted)" }}>Balanced Scorecard belum tersedia — jalankan Analisis ulang.</div></Card>}
+        </div>
+      )}
+
+      {ttab === "proyeksi" && (
+        <div>
+          <SectionTitle eyebrow="Proyeksi 5 Tahun" title="Proyeksi Keuangan (mencerminkan rencana transformasi)" />
+          {proj ? (
+            <React.Fragment>
+              {projTable("Laba Rugi", proj.pnl || [], proj.labels || [])}
+              {projTable("Neraca", proj.balance || [], proj.labels || [])}
+              {projTable("Rincian Pendapatan per Jenis Usaha", proj.revenueBreakdown || [], proj.labels || [])}
+              <div style={{ fontSize: 11.5, color: "var(--text-faint)", fontStyle: "italic", marginTop: 4 }}>Proyeksi adalah estimasi berbasis tahun terakhir dokumen + asumsi rencana transformasi; bukan angka aktual.</div>
+            </React.Fragment>
+          ) : <Card padding="lg"><div style={{ fontSize: 13, color: "var(--text-muted)" }}>Proyeksi keuangan belum tersedia — jalankan Analisis ulang.</div></Card>}
+        </div>
+      )}
       </div>
       <ChatDock>
         <ChatPanel caseId={caseCtx && caseCtx.id} caseName={company} agentKey="transform" agentLabel="Agen Transformasi" period={d.horizon || "5 tahun"} contextText={caseCtx && window.STX_AI.buildContext(caseCtx.docText, 160000)} />
