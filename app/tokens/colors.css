@@ -1,0 +1,143 @@
+/* ============================================================
+   STRATIX — Color tokens
+   Brand: deep navy wordmark + teal "X-factor" blade.
+   Institutional trust (finance) × analytical clarity × premium.
+   ============================================================ */
+:root {
+  /* ---- Brand: Navy (primary / authority) ---- */
+  --navy-950: #0A1B33;
+  --navy-900: #0E2547;   /* brand core — wordmark */
+  --navy-800: #143156;
+  --navy-700: #1D4270;
+  --navy-600: #2A578C;
+  --navy-500: #3D6EA5;
+  --navy-400: #6E93BD;
+
+  /* ---- Accent: Teal / Cyan (the X factor) ---- */
+  --teal-700: #0B6472;
+  --teal-600: #0E7C8B;
+  --teal-500: #12A3B4;   /* accent core */
+  --teal-400: #2FBAC9;
+  --cyan-300: #6BD8E4;
+  --cyan-200: #A9E9F1;
+
+  /* ---- Cool slate neutrals ---- */
+  --slate-50:  #F5F7FA;
+  --slate-100: #E8EDF1;
+  --slate-200: #D7DFE6;
+  --slate-300: #BCC8D3;
+  --slate-400: #93A2B2;
+  --slate-500: #6B7C8E;
+  --slate-600: #4E5E70;
+  --slate-700: #37485A;
+  --slate-800: #22303F;
+  --slate-900: #131E29;
+  --white: #FFFFFF;
+
+  /* ---- Semantic (finance signals) ---- */
+  --positive-600: #12855A;  /* gains, healthy */
+  --positive-500: #16A870;
+  --positive-050: #E4F4EC;
+  --negative-600: #C33A3A;  /* losses, fraud alert */
+  --negative-500: #DC4A4A;
+  --negative-050: #FBEAEA;
+  --warning-600:  #C67E12;  /* caution */
+  --warning-500:  #E0A11E;
+  --warning-050:  #FBF1DE;
+  --info-600: var(--teal-600);
+  --info-500: var(--teal-500);
+  --info-050: #E1F4F6;
+
+  /* ---- Risk scale (risk & fraud) ---- */
+  --risk-low:      #12855A;
+  --risk-moderate: #E0A11E;
+  --risk-high:     #E07A1E;
+  --risk-critical: #C33A3A;
+  --risk-low-050:      #E4F4EC;
+  --risk-moderate-050: #FBF1DE;
+  --risk-high-050:     #FBEEDF;
+  --risk-critical-050: #FBEAEA;
+
+  /* ---- Signature gradient (the blade) ---- */
+  --grad-blade: linear-gradient(135deg, var(--cyan-300) 0%, var(--teal-500) 42%, var(--navy-900) 100%);
+  --grad-navy:  linear-gradient(160deg, var(--navy-800) 0%, var(--navy-950) 100%);
+  --grad-accent-soft: linear-gradient(135deg, var(--teal-500) 0%, var(--navy-700) 100%);
+
+  /* ============================================================
+     SEMANTIC ALIASES — Light theme (default)
+     ============================================================ */
+  --bg-app:        var(--slate-50);
+  --bg-subtle:     var(--slate-100);
+  --surface:       var(--white);
+  --surface-raised: var(--white);
+  --surface-sunken: var(--slate-50);
+  --surface-inverse: var(--navy-900);
+
+  --border:        var(--slate-200);
+  --border-strong: var(--slate-300);
+  --border-subtle: var(--slate-100);
+
+  --text-strong:   var(--navy-900);
+  --text-body:     var(--slate-700);
+  --text-muted:    var(--slate-500);
+  --text-faint:    var(--slate-400);
+  --text-on-brand: var(--white);
+  --text-inverse:  var(--slate-100);
+
+  --brand:         var(--navy-900);
+  --brand-hover:   var(--navy-800);
+  --brand-active:  var(--navy-950);
+  --accent:        var(--teal-500);
+  --accent-hover:  var(--teal-600);
+  --accent-active: var(--teal-700);
+  --accent-quiet:  var(--info-050);
+
+  --focus-ring:    var(--teal-500);
+
+  --data-grid:     var(--slate-100);  /* chart gridlines */
+  --data-axis:     var(--slate-400);
+}
+
+/* ============================================================
+   Dark theme
+   ============================================================ */
+[data-theme="dark"] {
+  --bg-app:        #0A1622;
+  --bg-subtle:     #0E1E30;
+  --surface:       #122236;
+  --surface-raised: #16293F;
+  --surface-sunken: #0C1B2B;
+  --surface-inverse: var(--slate-50);
+
+  --border:        #22374F;
+  --border-strong: #2E4664;
+  --border-subtle: #1A2C42;
+
+  --text-strong:   #EAF1F8;
+  --text-body:     #B7C6D6;
+  --text-muted:    #7E92A8;
+  --text-faint:    #5E7288;
+  --text-on-brand: var(--white);
+  --text-inverse:  var(--navy-900);
+
+  --brand:         var(--teal-500);
+  --brand-hover:   var(--teal-400);
+  --brand-active:  var(--cyan-300);
+  --accent:        var(--teal-400);
+  --accent-hover:  var(--cyan-300);
+  --accent-active: var(--cyan-200);
+  --accent-quiet:  rgba(18,163,180,0.14);
+
+  --positive-050: rgba(22,168,112,0.16);
+  --negative-050: rgba(220,74,74,0.16);
+  --warning-050:  rgba(224,161,30,0.16);
+  --info-050:     rgba(18,163,180,0.16);
+  --risk-low-050:      rgba(18,133,90,0.18);
+  --risk-moderate-050: rgba(224,161,30,0.18);
+  --risk-high-050:     rgba(224,122,30,0.18);
+  --risk-critical-050: rgba(195,58,58,0.18);
+
+  --focus-ring:    var(--teal-400);
+  --data-grid:     #1C3048;
+  --data-axis:     #4E6480;
+}
