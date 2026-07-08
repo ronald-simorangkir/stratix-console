@@ -1,6 +1,6 @@
 {
   "name": "stratix-console",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "STRATIX Console — platform konsultan AI untuk analisis kesehatan perusahaan.",
   "author": "Mandiri Capital Indonesia",
   "license": "UNLICENSED",
@@ -33,7 +33,8 @@
     },
     "publish": [
       {
-        "provider": "github"
+        "provider": "github",
+        "releaseType": "release"
       }
     ],
     "win": {

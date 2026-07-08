@@ -1,13 +1,15 @@
-# Build + terbitkan STRATIX Console ke GitHub Releases (mendukung auto-update).
-# Cara pakai: buka tab "Actions" di repo Anda -> pilih "release-windows" ->
-# klik "Run workflow". Aplikasi yang sudah terinstal akan otomatis menawarkan
-# pembaruan saat berikutnya dibuka.
+# Build + terbitkan STRATIX Console ke GitHub Releases (auto-update).
+# OTOMATIS: setiap kali Anda push ke 'main' (Commit lalu Push di GitHub Desktop),
+# build berjalan sendiri DAN rilis langsung terbit — tanpa buka tab Actions,
+# tanpa klik Publish. Aplikasi terinstal menawarkan pembaruan saat berikutnya dibuka.
+# (Tombol "Run workflow" manual tetap tersedia sebagai cadangan.)
 name: release-windows
 
 on:
-  workflow_dispatch: {}
   push:
+    branches: [main]
     tags: ['v*']
+  workflow_dispatch: {}
 
 permissions:
   contents: write
