@@ -378,6 +378,122 @@ function BarChart({ series, labels, height = 150, color = "var(--navy-700)" }) {
   );
 }
 
+/* ============ Interactive multi-series chart (line/bar, dual-axis, labels) ============ */
+const LINE_METRICS = [
+  ["pendapatan", "Pendapatan", "Rp M"], ["laba_kotor", "Laba Kotor", "Rp M"],
+  ["beban_usaha", "Total Beban Usaha", "Rp M"], ["laba_usaha", "Laba Usaha", "Rp M"],
+  ["laba_bersih", "Laba Tahun Berjalan", "Rp M"], ["total_aset", "Total Aset", "Rp M"],
+  ["aset_lancar", "Aset Lancar", "Rp M"], ["aset_tidak_lancar", "Aset Tidak Lancar", "Rp M"],
+  ["total_liabilitas", "Total Liabilitas", "Rp M"], ["liabilitas_pendek", "Liabilitas Jangka Pendek", "Rp M"],
+  ["liabilitas_panjang", "Liabilitas Jangka Panjang", "Rp M"], ["kas_operasi", "Kas Bersih Operasi", "Rp M"],
+  ["kas_investasi", "Kas Bersih Investasi", "Rp M"], ["kas_pendanaan", "Kas Bersih Pendanaan", "Rp M"],
+];
+const BAR_METRICS = [
+  ["gross_margin", "Gross Margin", "%"], ["ebitda_margin", "EBITDA Margin", "%"],
+  ["current_ratio", "Current Ratio", "%"], ["cash_ratio", "Cash Ratio", "%"],
+  ["dte", "Debt to Equity", "×"], ["roe", "ROE", "%"], ["roa", "ROA", "%"],
+  ["net_profit_margin", "Net Profit Margin", "%"], ["interest_coverage", "Interest Coverage", "%"],
+  ["bopo", "BOPO", "%"], ["rev_growth", "Net Revenue Growth", "%"],
+  ["ebitda_growth", "EBITDA YoY Growth", "%"], ["np_growth", "Net Profit YoY Growth", "%"],
+];
+function fmtChartNum(v, unit) {
+  if (v == null || isNaN(v)) return "—";
+  if (unit === "%") return v.toFixed(1).replace(".", ",") + "%";
+  if (unit === "×") return v.toFixed(2).replace(".", ",") + "×";
+  const a = Math.abs(v);
+  if (a >= 1000) return (v / 1000).toFixed(2).replace(".", ",") + " T";
+  return v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+function maxAbs(arr) { const n = arr.filter((x) => x != null && !isNaN(x)); return n.length ? Math.max(...n.map(Math.abs)) : 0; }
+function scaleOf(vals) {
+  const n = vals.filter((x) => x != null && !isNaN(x));
+  let min = Math.min(0, ...n), max = Math.max(0, ...n);
+  if (min === max) { max += 1; min -= 1; }
+  const p = (max - min) * 0.12; return { min: min - p, max: max + p };
+}
+
+function MetricPicker({ catalog, value, onChange, allowNone }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}
+      style={{ fontSize: 12, fontFamily: "var(--font-sans)", color: "var(--text-body)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "5px 8px", cursor: "pointer", maxWidth: 200 }}>
+      {allowNone ? <option value="none">— Tidak ada —</option> : null}
+      {catalog.map(([k, lbl]) => <option key={k} value={k}>{lbl}</option>)}
+    </select>
+  );
+}
+
+function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 220 }) {
+  const [a, setA] = React.useState(defaultKey || catalog[0][0]);
+  const [b, setB] = React.useState("none");
+  React.useEffect(refreshIcons);
+  data = data || {};
+  const lo = range ? range[0] : 0, hi = range ? range[1] : (labels.length - 1);
+  const yrs = labels.slice(lo, hi + 1);
+  const meta = (k) => catalog.find((c) => c[0] === k) || [k, k, ""];
+  const vals = (k) => (data[k] || []).slice(lo, hi + 1).map((x) => (x == null || isNaN(x)) ? null : +x);
+  const A = { key: a, label: meta(a)[1], unit: meta(a)[2], v: vals(a), color: "var(--teal-500)" };
+  const B = b !== "none" ? { key: b, label: meta(b)[1], unit: meta(b)[2], v: vals(b), color: "var(--navy-500)" } : null;
+  const hasA = A.v.some((x) => x != null);
+  const dual = B && (A.unit !== B.unit || (maxAbs(A.v) && maxAbs(B.v) && (maxAbs(B.v) / maxAbs(A.v) > 8 || maxAbs(A.v) / maxAbs(B.v) > 8)));
+  const sL = scaleOf(dual ? A.v : (B ? A.v.concat(B.v) : A.v));
+  const sR = dual ? scaleOf(B.v) : sL;
+
+  const W = 640, H = height, padL = 52, padR = dual ? 52 : 14, padT = 22, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB, n = yrs.length;
+  const xAt = (i) => padL + (n <= 1 ? plotW / 2 : (i * plotW) / (n - 1));
+  const yOf = (v, s) => padT + plotH - ((v - s.min) / (s.max - s.min)) * plotH;
+  const gridY = [0, 0.25, 0.5, 0.75, 1].map((g) => padT + g * plotH);
+  const tickVals = (s) => [0, 0.25, 0.5, 0.75, 1].map((g) => s.max - g * (s.max - s.min));
+
+  function linePath(series, s) {
+    let d = "", started = false;
+    series.forEach((v, i) => { if (v == null) { started = false; return; } d += (started ? "L" : "M") + xAt(i).toFixed(1) + "," + yOf(v, s).toFixed(1) + " "; started = true; });
+    return d.trim();
+  }
+  const barGroupW = plotW / Math.max(n, 1);
+  const barW = Math.min(30, barGroupW * (B ? 0.32 : 0.5));
+
+  return (
+    <div>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "2px 4px 12px" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--teal-600)", fontWeight: 600 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: "var(--teal-500)" }} /> Seri 1</span>
+        <MetricPicker catalog={catalog} value={a} onChange={setA} />
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600, marginLeft: 6 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: "var(--navy-500)" }} /> Seri 2</span>
+        <MetricPicker catalog={catalog} value={b} onChange={setB} allowNone />
+        {dual ? <span style={{ fontSize: 10.5, color: "var(--text-faint)", fontStyle: "italic" }}>· sumbu-Y ganda (skala berbeda)</span> : null}
+      </div>
+      {!hasA ? (
+        <div style={{ height: H, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-faint)", fontSize: 13 }}>Data untuk metrik ini tidak tersedia di dokumen.</div>
+      ) : (
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: "visible" }}>
+          {gridY.map((gy, i) => <line key={i} x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="var(--data-grid)" strokeWidth="1" />)}
+          {tickVals(sL).map((tv, i) => <text key={"l" + i} x={padL - 6} y={gridY[i] + 3} textAnchor="end" fontSize="9.5" fill="var(--text-faint)" fontFamily="var(--font-mono)">{fmtChartNum(tv, A.unit)}</text>)}
+          {dual ? tickVals(sR).map((tv, i) => <text key={"r" + i} x={W - padR + 6} y={gridY[i] + 3} textAnchor="start" fontSize="9.5" fill="var(--text-faint)" fontFamily="var(--font-mono)">{fmtChartNum(tv, B.unit)}</text>) : null}
+          {yrs.map((yr, i) => <text key={yr} x={xAt(i)} y={H - 8} textAnchor="middle" fontSize="10.5" fill="var(--text-muted)">{yr}</text>)}
+
+          {mode === "bar" ? (
+            <g>
+              {A.v.map((v, i) => v == null ? null : <rect key={"a" + i} x={xAt(i) - (B ? barW + 2 : barW / 2)} y={Math.min(yOf(v, sL), yOf(0, sL))} width={barW} height={Math.abs(yOf(v, sL) - yOf(0, sL))} rx="3" fill={i === n - 1 && !B ? "var(--grad-blade, var(--teal-500))" : A.color} />)}
+              {A.v.map((v, i) => v == null ? null : <text key={"at" + i} x={xAt(i) - (B ? barW / 2 + 1 : 0)} y={yOf(v, sL) - 5} textAnchor="middle" fontSize="9.5" fontFamily="var(--font-mono)" fill="var(--text-body)">{fmtChartNum(v, A.unit)}</text>)}
+              {B ? B.v.map((v, i) => v == null ? null : <rect key={"b" + i} x={xAt(i) + 2} y={Math.min(yOf(v, sR), yOf(0, sR))} width={barW} height={Math.abs(yOf(v, sR) - yOf(0, sR))} rx="3" fill={B.color} />) : null}
+              {B ? B.v.map((v, i) => v == null ? null : <text key={"bt" + i} x={xAt(i) + barW / 2 + 2} y={yOf(v, sR) - 5} textAnchor="middle" fontSize="9.5" fontFamily="var(--font-mono)" fill="var(--text-muted)">{fmtChartNum(v, B.unit)}</text>) : null}
+            </g>
+          ) : (
+            <g>
+              <path d={linePath(A.v, sL)} fill="none" stroke={A.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+              {A.v.map((v, i) => v == null ? null : <circle key={"ac" + i} cx={xAt(i)} cy={yOf(v, sL)} r="3.4" fill="var(--surface)" stroke={A.color} strokeWidth="2" />)}
+              {A.v.map((v, i) => v == null ? null : <text key={"al" + i} x={xAt(i)} y={yOf(v, sL) - 9} textAnchor="middle" fontSize="9.5" fontFamily="var(--font-mono)" fill="var(--text-body)">{fmtChartNum(v, A.unit)}</text>)}
+              {B ? <path d={linePath(B.v, sR)} fill="none" stroke={B.color} strokeWidth="2.5" strokeDasharray="5 4" strokeLinejoin="round" /> : null}
+              {B ? B.v.map((v, i) => v == null ? null : <circle key={"bc" + i} cx={xAt(i)} cy={yOf(v, sR)} r="3.4" fill="var(--surface)" stroke={B.color} strokeWidth="2" />) : null}
+              {B ? B.v.map((v, i) => v == null ? null : <text key={"bl" + i} x={xAt(i)} y={yOf(v, sR) + 15} textAnchor="middle" fontSize="9.5" fontFamily="var(--font-mono)" fill="var(--text-muted)">{fmtChartNum(v, B.unit)}</text>) : null}
+            </g>
+          )}
+        </svg>
+      )}
+    </div>
+  );
+}
+
 function Donut({ value, size = 96, stroke = 11, color = "var(--teal-500)", track = "var(--bg-subtle)", label }) {
   const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c - (value / 100) * c;
   return (
@@ -1158,10 +1274,28 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
   const ulasanLead = multi
     ? `Ulasan ini mencakup periode ${startYear}–${endYear} (${nYears} tahun). Sepanjang periode tersebut, pendapatan bergerak dari Rp ${fmtT(revStart)} T menjadi Rp ${fmtT(revNow)} T (CAGR ${cagr.toFixed(1).replace(".", ",")}%), dengan marjin EBITDA ${marStart.toFixed(1).replace(".", ",")}% menuju ${marEnd.toFixed(1).replace(".", ",")}%.`
     : `Ulasan ini difokuskan pada tahun buku ${endYear}, dengan pendapatan Rp ${fmtT(revNow)} T dan marjin EBITDA ${marEnd.toFixed(1).replace(".", ",")}%.`;
+  const fin = d.financials || null;
+  const finVal = (key, idx) => (fin && fin.lines && fin.lines[key] && idx >= 0 && fin.lines[key][idx] != null && !isNaN(fin.lines[key][idx])) ? +fin.lines[key][idx] : null;
+  const finCapex = (idx) => (fin && Array.isArray(fin.capex) && fin.capex[idx] != null && !isNaN(fin.capex[idx])) ? +fin.capex[idx] : null;
+  const rpCard = (v) => (v == null || isNaN(v)) ? { value: "n.a.", unit: "M" } : (Math.abs(v) >= 1000 ? { value: "Rp " + (v / 1000).toFixed(2).replace(".", ","), unit: "T" } : { value: "Rp " + Math.round(v).toLocaleString("id-ID"), unit: "M" });
   const kpis = d.kpis.map((k, i) => {
     if (i === 0) return { ...k, label: `Revenue FY${endYear}`, value: "Rp " + revNow.toFixed(2).replace(".", ","), unit: "T", delta: revDelta != null ? nums(revDelta) + "%" : "—", hint: multi ? `vs ${years[hi - 1]}` : "YoY" };
     if (i === 1) return { ...k, label: `EBITDA Margin ${endYear}`, value: marNow.toFixed(1).replace(".", ","), unit: "%", delta: marDelta != null ? nums(marDelta) + "%" : "—", hint: hi > 0 ? `vs ${years[hi - 1]}` : "—" };
-    return { ...k, hint: (k.hint && String(k.hint).length > 18) ? "YoY" : k.hint };
+    if (i === 2) {
+      const np = finVal("laba_bersih", hi), npp = finVal("laba_bersih", hi - 1), c = rpCard(np);
+      if (np != null) return { ...k, label: `Net Profit FY${endYear}`, value: c.value, unit: c.unit, delta: (npp != null && npp !== 0) ? nums((np - npp) / Math.abs(npp) * 100) + "%" : (String(k.delta || "").length <= 10 ? k.delta : ""), hint: hi > 0 ? `vs ${years[hi - 1]}` : `FY${endYear}` };
+      return { ...k, label: `Net Profit FY${endYear}`, hint: (k.hint && String(k.hint).length > 18) ? "YoY" : k.hint };
+    }
+    if (i === 3) {
+      const cfo = finVal("kas_operasi", hi), cap = finCapex(hi);
+      if (cfo != null && cap != null) {
+        const fcf = cfo - cap, c = rpCard(fcf);
+        const formula = `Free Cash Flow (FY${endYear})\n\nRumus umum:\nFCF = Kas Bersih Aktivitas Operasi \u2212 Capex\n\n= ${fmtChartNum(cfo, "Rp M")} \u2212 ${fmtChartNum(cap, "Rp M")}\n= ${fmtChartNum(fcf, "Rp M")} (Miliar Rupiah)\n\nCapex = belanja modal (pembelian aset tetap) dari arus kas investasi.`;
+        return { ...k, label: `Free Cash Flow FY${endYear}`, value: c.value, unit: c.unit, delta: "", hint: "hover: rumus", title: formula };
+      }
+      return { ...k, label: `Free Cash Flow FY${endYear}`, value: "n.a.", unit: "M", delta: "", hint: "data kurang", title: `FCF tidak dapat dihitung untuk FY${endYear}: komponen Kas Bersih Operasi dan/atau Capex tidak tersedia di dokumen. Unggah laporan arus kas yang lengkap.` };
+    }
+    return k;
   });
   const setFrom = (v) => { setFromIdx(v); if (v > toIdx) setToIdx(v); };
   const setTo = (v) => { setToIdx(v); if (v < fromIdx) setFromIdx(v); };
@@ -1229,8 +1363,10 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 16, marginBottom: 20 }}>
             <Card>
-              <CardHeader title="Tren Pendapatan" subtitle={`Rp Triliun · ${rangeLabel}`} action={multi ? <Badge tone="positive" dot>CAGR {cagr.toFixed(1).replace(".", ",")}%</Badge> : null} />
-              {revSlice.length > 1 ? (
+              <CardHeader title="Tren Metrik Keuangan" subtitle={`Nilai per tahun · ${rangeLabel}`} action={multi ? <Badge tone="positive" dot>CAGR Pendapatan {cagr.toFixed(1).replace(".", ",")}%</Badge> : null} />
+              {fin && fin.lines ? (
+                <MultiChart mode="line" catalog={LINE_METRICS} data={fin.lines} labels={fin.labels || years} range={[lo, hi]} defaultKey="pendapatan" height={230} />
+              ) : revSlice.length > 1 ? (
                 <>
                   <LineChart series={revSlice} labels={labelSlice} height={180} color="var(--teal-500)" />
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 8px" }}>
@@ -1245,8 +1381,12 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
               )}
             </Card>
             <Card>
-              <CardHeader title="EBITDA Margin" subtitle={`% · ${rangeLabel}`} />
-              <BarChart series={marginSlice} labels={labelSlice} height={190} color="var(--navy-600)" />
+              <CardHeader title="Rasio & Margin" subtitle={`Per tahun · ${rangeLabel}`} />
+              {fin && fin.bars ? (
+                <MultiChart mode="bar" catalog={BAR_METRICS} data={fin.bars} labels={fin.labels || years} range={[lo, hi]} defaultKey="ebitda_margin" height={230} />
+              ) : (
+                <BarChart series={marginSlice} labels={labelSlice} height={190} color="var(--navy-600)" />
+              )}
             </Card>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 16 }}>
@@ -1416,6 +1556,39 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
 }
 
 /* ---------- Agen Risiko & Fraud ---------- */
+function ScoreBlock({ kind, s }) {
+  const { Badge } = AgNS;
+  React.useEffect(refreshIcons);
+  const isM = kind === "mscore";
+  const title = isM ? "Beneish M-Score" : "Piotroski F-Score";
+  if (!s || s.value == null) {
+    return <div style={{ border: "1px dashed var(--border-strong)", borderRadius: "var(--radius-md)", padding: "14px 16px", fontSize: 12.5, color: "var(--text-muted)" }}>{title} belum tersedia — jalankan <b>Analisis ulang</b> agar dihitung dari laporan keuangan.</div>;
+  }
+  const val = isM ? Number(s.value).toFixed(2).replace(".", ",") : s.value + " / 9";
+  const vd = String(s.verdict || "").toLowerCase();
+  const tone = /manipulasi|lemah/.test(vd) ? "negative" : /abu|sedang/.test(vd) ? "warning" : "positive";
+  const comps = (s.components || []).map((c) => isM
+    ? `\u2022 ${c.k} (${c.label}): ${c.value != null ? c.value : "\u2014"}${c.note ? " \u2014 " + c.note : ""}`
+    : `\u2022 [${c.point ? "1" : "0"}] ${c.k}${c.note ? " \u2014 " + c.note : ""}`).join("\n");
+  const tip = `${title} \u2014 Tahun ${s.year || "-"}\n\nRUMUS:\n${s.formula || "-"}\n\nKOMPONEN:\n${comps}`;
+  return (
+    <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "14px 16px", background: "var(--bg-subtle)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>{title}</div>
+          <div style={{ fontSize: 10.5, color: "var(--text-faint)" }}>Tahun {s.year || "-"}</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 21, fontWeight: 800, color: "var(--text-strong)" }}>{val}</span>
+          <Badge tone={tone} dot>{s.verdict}</Badge>
+          <button title={tip} style={{ border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-muted)", borderRadius: 999, width: 26, height: 26, cursor: "help", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon n="info" s={14} /></button>
+        </div>
+      </div>
+      {s.interpretation ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.6, marginTop: 8 }}>{s.interpretation}</div> : null}
+    </div>
+  );
+}
+
 function AgentRisk({ d, caseCtx }) {
   const { Card, CardHeader, Badge, Alert, RiskBadge, RiskCell } = AgNS;
   React.useEffect(refreshIcons);
@@ -1455,27 +1628,10 @@ function AgentRisk({ d, caseCtx }) {
           </div>
         </Card>
         <Card>
-          <CardHeader title="Matriks Risiko" subtitle="Dampak × Kemungkinan · angka = nomor red flag" />
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-around", fontSize: 10, color: "var(--text-faint)", textAlign: "right", paddingBottom: 18 }}>
-              {rowLabels.map((r) => <span key={r} style={{ height: 18, lineHeight: "18px" }}>{r}</span>)}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 4 }}>
-                {d.matrix.flatMap((row, ri) => row.map((lv, ci) => (
-                  <RiskCell key={ri + "-" + ci} level={lv} style={{ minHeight: 34 }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center", alignItems: "center" }}>
-                      {(cellNums[ri + "-" + ci] || []).map((n) => (
-                        <span key={n} style={{ minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: "rgba(255,255,255,0.94)", color: "var(--navy-900)", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 2px rgba(0,0,0,0.28)" }}>{n}</span>
-                      ))}
-                    </div>
-                  </RiskCell>
-                )))}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 4, marginTop: 5 }}>
-                {colLabels.map((c) => <span key={c} style={{ fontSize: 9, color: "var(--text-faint)", textAlign: "center" }}>{c}</span>)}
-              </div>
-            </div>
+          <CardHeader title="Skor Forensik Laporan Keuangan" subtitle="Beneish M-Score & Piotroski F-Score · tahun terakhir" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <ScoreBlock kind="mscore" s={d.mscore} />
+            <ScoreBlock kind="fscore" s={d.fscore} />
           </div>
         </Card>
       </div>
@@ -1535,17 +1691,16 @@ function AgentTransform({ d, caseCtx }) {
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
       <ResultToolbar version="v1" />
-      {/* Ambition banner */}
       <div style={{ background: "var(--grad-navy)", borderRadius: "var(--radius-xl)", padding: "24px 26px", color: "#fff", marginBottom: 20, position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", right: -30, top: -30, width: 200, height: 200, background: "var(--grad-blade)", opacity: 0.18, borderRadius: "50%", filter: "blur(20px)" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Badge tone="accent" style={{ background: "rgba(107,216,228,0.16)", color: "var(--cyan-200)" }}>Horizon {d.horizon}</Badge>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--cyan-300)" }}>Rencana Transformasi 5 Tahun</span>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 12, maxWidth: 720, lineHeight: 1.4 }}>{d.ambition}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 12, maxWidth: 760, lineHeight: 1.4 }}>{d.ambition}</div>
+        {d.context ? <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.82)", marginTop: 12, maxWidth: 760, lineHeight: 1.6 }}>{d.context}</div> : null}
       </div>
 
-      {/* Pillars */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 24 }}>
         {d.pillars.map((p) => (
           <Card key={p.name} padding="md">
@@ -1556,7 +1711,24 @@ function AgentTransform({ d, caseCtx }) {
         ))}
       </div>
 
-      {/* Timeline */}
+      {Array.isArray(d.quickWins) && d.quickWins.length ? (
+        <div style={{ marginBottom: 24 }}>
+          <SectionTitle eyebrow="0–12 bulan" title="Quick Wins" />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+            {d.quickWins.map((q, i) => (
+              <Card key={i} padding="md">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-strong)" }}>{q.title}</span>
+                  {q.theme ? <Badge tone="brand" size="sm">{q.theme}</Badge> : null}
+                </div>
+                {q.impact ? <div style={{ fontSize: 12.5, color: "var(--accent-hover)", fontWeight: 600, marginTop: 6 }}>{q.impact}</div> : null}
+                {q.timeframe ? <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 3 }}>{q.timeframe}</div> : null}
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <SectionTitle eyebrow="Roadmap" title="Fase Transformasi Bertahap" />
       <div style={{ position: "relative", paddingLeft: 8 }}>
         <div style={{ position: "absolute", left: 27, top: 12, bottom: 12, width: 2, background: "var(--border)" }} />
@@ -1570,20 +1742,59 @@ function AgentTransform({ d, caseCtx }) {
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 17, fontWeight: 700, color: "var(--accent-hover)" }}>{ph.year}</span>
                     <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)" }}>{ph.title}</span>
                   </div>
-                  <Badge tone="brand" size="sm">Investasi {ph.invest}</Badge>
+                  {ph.invest ? <Badge tone="brand" size="sm">Investasi {ph.invest}</Badge> : null}
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                  {ph.items.map((it) => (
-                    <span key={it} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-body)", background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", padding: "5px 10px", borderRadius: "var(--radius-sm)" }}>
-                      <Icon n="check" s={13} style={{ color: "var(--positive-500)" }} />{it}
-                    </span>
-                  ))}
-                </div>
+                {ph.kpi ? <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>KPI utama: {ph.kpi}</div> : null}
+                {Array.isArray(ph.initiatives) ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                    {ph.initiatives.map((it, k) => (
+                      <div key={k} style={{ border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)", padding: "10px 12px", background: "var(--surface-sunken)" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>{it.name}</span>
+                          {it.theme ? <Badge tone="neutral" size="sm">{it.theme}</Badge> : null}
+                        </div>
+                        {it.desc ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.55, marginTop: 5 }}>{it.desc}</div> : null}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 7 }}>
+                          {it.impact_quant ? <span style={{ fontSize: 12, color: "var(--positive-600)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="trending-up" s={13} />{it.impact_quant}</span> : null}
+                          {it.impact_other ? <span style={{ fontSize: 12, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="target" s={13} />{it.impact_other}</span> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                    {(ph.items || []).map((it) => (
+                      <span key={it} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-body)", background: "var(--surface-sunken)", border: "1px solid var(--border-subtle)", padding: "5px 10px", borderRadius: "var(--radius-sm)" }}>
+                        <Icon n="check" s={13} style={{ color: "var(--positive-500)" }} />{it}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </Card>
             </div>
           ))}
         </div>
       </div>
+
+      {Array.isArray(d.review) && d.review.length ? (
+        <div style={{ marginTop: 28 }}>
+          <SectionTitle eyebrow="Analisis" title="Ulasan Transformasi" />
+          <Card padding="lg">
+            {d.review.map((sec) => (
+              <div key={sec.h} style={{ marginBottom: 22 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", margin: "0 0 8px" }}>{sec.h}</h3>
+                {String(sec.b || "").split(/\n\s*\n|\n(?=\s*Implikasi strategis)/i).map((para, k) => {
+                  const tx = para.trim(); if (!tx) return null;
+                  const isImpl = /^implikasi/i.test(tx);
+                  return isImpl
+                    ? <p key={k} style={{ fontSize: 14, lineHeight: 1.7, color: "var(--text-body)", margin: "12px 0 0", padding: "11px 15px", background: "var(--accent-quiet)", borderLeft: "3px solid var(--accent)", borderRadius: 8 }}>{tx}</p>
+                    : <p key={k} style={{ fontSize: 14.5, lineHeight: 1.75, color: "var(--text-body)", margin: "0 0 12px", textAlign: "left" }}>{tx}</p>;
+                })}
+              </div>
+            ))}
+          </Card>
+        </div>
+      ) : null}
       </div>
       <ChatDock>
         <ChatPanel caseId={caseCtx && caseCtx.id} caseName={company} agentKey="transform" agentLabel="Agen Transformasi" period={d.horizon || "5 tahun"} contextText={caseCtx && window.STX_AI.buildContext(caseCtx.docText, 160000)} />
@@ -1959,12 +2170,28 @@ function App() {
   // ---- Background analysis jobs (survive navigation) ----
   const jobKey = (caseId, agent) => caseId + ":" + agent;
   const setJob = (key, patch) => setJobs((j) => ({ ...j, [key]: Object.assign({}, j[key], patch) }));
+  const buildPriorFindings = (c) => {
+    const a = c.analysis || {}, parts = [];
+    const f = a.finance;
+    if (f) {
+      if (f.verdict) parts.push("KESIMPULAN KEUANGAN: " + f.verdict);
+      if (Array.isArray(f.concerns) && f.concerns.length) parts.push("CONCERN KEUANGAN:\n" + f.concerns.map((x) => `- ${x.title}${x.detail ? ": " + x.detail : ""}`).join("\n"));
+      if (Array.isArray(f.ratios) && f.ratios.length) parts.push("RASIO KUNCI: " + f.ratios.map((r) => `${r.r} ${r.v} (${r.s})`).join("; "));
+    }
+    const r = a.risk;
+    if (r) {
+      if (Array.isArray(r.flags) && r.flags.length) parts.push("RED FLAGS RISIKO/FRAUD:\n" + r.flags.map((x) => `- [${x.level}] ${x.title}${x.detail ? ": " + x.detail : ""}`).join("\n"));
+      if (r.mscore) parts.push(`Beneish M-Score ${r.mscore.year || ""}: ${r.mscore.value} (${r.mscore.verdict})`);
+      if (r.fscore) parts.push(`Piotroski F-Score ${r.fscore.year || ""}: ${r.fscore.value}/9 (${r.fscore.verdict})`);
+    }
+    return parts.join("\n\n").slice(0, 8000);
+  };
   const startJob = (caseObj, agent) => {
     const key = jobKey(caseObj.id, agent);
     if (jobs[key] && jobs[key].status === "running") return;
     const AI = window.STX_AI;
     const ctx = window.STX_AI.buildContext(caseObj.docText);
-    if (agent === "finance" || agent === "risk") {
+    if (agent === "finance" || agent === "risk" || agent === "transform") {
       if (!AI || !AI.hasKey()) { setJob(key, { status: "error", error: "API Key Anthropic belum diatur. Buka Pengaturan → API Key.", progress: 0 }); return; }
       if (ctx.trim().length < 40) { setJob(key, { status: "error", error: "Unggah dokumen keuangan terlebih dahulu agar dapat dianalisis.", progress: 0 }); return; }
     }
@@ -1992,13 +2219,18 @@ function App() {
           finish({ status: "done", progress: 100 });
         })
         .catch((e) => finish({ status: "error", progress: 0, error: "Analisis gagal: " + e.message }));
+    } else if (agent === "transform" && AI) {
+      const prior = buildPriorFindings(caseObj);
+      AI.analyzeTransform({ company: caseObj.company, contextText: ctx, priorFindings: prior })
+        .then((result) => {
+          caseObj.analysis = Object.assign({}, caseObj.analysis, { transform: result });
+          if (!caseObj.agents.includes("transform")) caseObj.agents.push("transform");
+          markDirty(caseObj.id);
+          finish({ status: "done", progress: 100 });
+        })
+        .catch((e) => finish({ status: "error", progress: 0, error: "Analisis gagal: " + e.message }));
     } else {
-      // agen contoh (transform): simulasi
-      setTimeout(() => {
-        if (!caseObj.agents.includes(agent)) caseObj.agents.push(agent);
-        markDirty(caseObj.id);
-        finish({ status: "done", progress: 100 });
-      }, 2600);
+      setTimeout(() => { if (!caseObj.agents.includes(agent)) caseObj.agents.push(agent); markDirty(caseObj.id); finish({ status: "done", progress: 100 }); }, 1500);
     }
   };
   const clearJob = (key) => setJobs((j) => { const n = { ...j }; delete n[key]; return n; });
@@ -2076,7 +2308,7 @@ function App() {
     });
   }} />;
   else if (view === "agent-risk" && activeCase) content = <AgentRisk d={(activeCase.analysis && activeCase.analysis.risk) || D.risk} caseCtx={activeCase} />;
-  else if (view === "agent-transform" && activeCase) content = <AgentTransform d={D.transform} caseCtx={activeCase} />;
+  else if (view === "agent-transform" && activeCase) content = <AgentTransform d={(activeCase.analysis && activeCase.analysis.transform) || D.transform} caseCtx={activeCase} />;
   else if (view === "settings") content = <Settings user={user} onUpdateUser={setUser} />;
   else content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
 
