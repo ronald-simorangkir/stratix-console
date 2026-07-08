@@ -444,6 +444,12 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
   const plotW = W - padL - padR, plotH = H - padT - padB, n = yrs.length;
   const xAt = (i) => padL + (n <= 1 ? plotW / 2 : (i * plotW) / (n - 1));
   const yOf = (v, s) => padT + plotH - ((v - s.min) / (s.max - s.min)) * plotH;
+  const labelY = (i, which) => {
+    const yA = A.v[i] != null ? yOf(A.v[i], sL) : null;
+    const yB = (B && B.v[i] != null) ? yOf(B.v[i], sR) : null;
+    if (which === "A") { if (yA == null) return 0; if (yB == null) return yA - 11; return yA <= yB ? yA - 11 : yA + 18; }
+    if (yB == null) return 0; if (yA == null) return yB - 11; return yB < yA ? yB - 11 : yB + 18;
+  };
   const gridY = [0, 0.25, 0.5, 0.75, 1].map((g) => padT + g * plotH);
   const tickVals = (s) => [0, 0.25, 0.5, 0.75, 1].map((g) => s.max - g * (s.max - s.min));
 
@@ -469,23 +475,23 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: "visible" }}>
           {gridY.map((gy, i) => <line key={i} x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="var(--data-grid)" strokeWidth="1" />)}
-          {yrs.map((yr, i) => <text key={yr} x={xAt(i)} y={H - 10} textAnchor="middle" fontSize="13" fontWeight="600" fill="var(--text-muted)">{yr}</text>)}
+          {yrs.map((yr, i) => <text key={yr} x={xAt(i)} y={H - 10} textAnchor="middle" fontSize="15" fontWeight="600" fill="var(--text-muted)">{yr}</text>)}
 
           {mode === "bar" ? (
             <g>
               {A.v.map((v, i) => v == null ? null : <rect key={"a" + i} x={xAt(i) - (B ? barW + 2 : barW / 2)} y={Math.min(yOf(v, sL), yOf(0, sL))} width={barW} height={Math.abs(yOf(v, sL) - yOf(0, sL))} rx="3" fill={i === n - 1 && !B ? "var(--grad-blade, var(--teal-500))" : A.color} />)}
-              {A.v.map((v, i) => v == null ? null : <text key={"at" + i} x={xAt(i) - (B ? barW / 2 + 1 : 0)} y={yOf(v, sL) - 7} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
+              {A.v.map((v, i) => v == null ? null : <text key={"at" + i} x={xAt(i) - (B ? barW / 2 + 1 : 0)} y={v >= 0 ? yOf(v, sL) - 7 : yOf(v, sL) + 16} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
               {B ? B.v.map((v, i) => v == null ? null : <rect key={"b" + i} x={xAt(i) + 2} y={Math.min(yOf(v, sR), yOf(0, sR))} width={barW} height={Math.abs(yOf(v, sR) - yOf(0, sR))} rx="3" fill={B.color} />) : null}
-              {B ? B.v.map((v, i) => v == null ? null : <text key={"bt" + i} x={xAt(i) + barW / 2 + 2} y={yOf(v, sR) - 7} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
+              {B ? B.v.map((v, i) => v == null ? null : <text key={"bt" + i} x={xAt(i) + barW / 2 + 2} y={v >= 0 ? yOf(v, sR) - 7 : yOf(v, sR) + 16} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
             </g>
           ) : (
             <g>
               <path d={linePath(A.v, sL)} fill="none" stroke={A.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
               {A.v.map((v, i) => v == null ? null : <circle key={"ac" + i} cx={xAt(i)} cy={yOf(v, sL)} r="3.4" fill="var(--surface)" stroke={A.color} strokeWidth="2" />)}
-              {A.v.map((v, i) => v == null ? null : <text key={"al" + i} x={xAt(i)} y={yOf(v, sL) - 11} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
+              {A.v.map((v, i) => v == null ? null : <text key={"al" + i} x={xAt(i)} y={labelY(i, "A")} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
               {B ? <path d={linePath(B.v, sR)} fill="none" stroke={B.color} strokeWidth="2.5" strokeDasharray="5 4" strokeLinejoin="round" /> : null}
               {B ? B.v.map((v, i) => v == null ? null : <circle key={"bc" + i} cx={xAt(i)} cy={yOf(v, sR)} r="3.4" fill="var(--surface)" stroke={B.color} strokeWidth="2" />) : null}
-              {B ? B.v.map((v, i) => v == null ? null : <text key={"bl" + i} x={xAt(i)} y={yOf(v, sR) + 20} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
+              {B ? B.v.map((v, i) => v == null ? null : <text key={"bl" + i} x={xAt(i)} y={labelY(i, "B")} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
             </g>
           )}
         </svg>
@@ -1361,7 +1367,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 20 }}>
             {kpis.map((k, i) => <StatCard key={k.label} {...k} accent={i === 0} icon={<Icon n={k.icon || ["trending-up", "percent", "wallet", "waves"][i] || "circle-dollar-sign"} s={18} />} />)}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 16, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16, marginBottom: 20 }}>
             <Card>
               <CardHeader title="Tren Metrik Keuangan" subtitle={`Nilai per tahun · ${rangeLabel}`} action={multi ? <Badge tone="positive" dot>CAGR Pendapatan {cagr.toFixed(1).replace(".", ",")}%</Badge> : null} />
               {fin && fin.lines ? (
@@ -1397,7 +1403,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
                 { key: "v", header: `FY${endYear}`, mono: true, strong: true },
                 { key: "b", header: "Benchmark", mono: true },
                 { key: "s", header: "Status", align: "right", render: (v) => statusBadge(v) },
-              ]} rows={d.ratios} style={{ border: "none", borderRadius: 0 }} />
+              ]} rows={d.ratios || []} style={{ border: "none", borderRadius: 0 }} />
             </Card>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <Card>
@@ -1481,7 +1487,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
           {/* Ringkasan tingkat */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
             {[["Tinggi", "negative"], ["Sedang", "warning"], ["Perhatian", "info"]].map(([lbl, lv]) => {
-              const n = d.concerns.filter((c) => concernLabel[c.level] === lbl).length;
+              const n = (d.concerns || []).filter((c) => concernLabel[c.level] === lbl).length;
               const clr = lv === "info" ? "teal" : lv;
               return (
                 <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" }}>
@@ -1498,7 +1504,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
           {/* Tabel ringkasan temuan */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Ringkasan Temuan · Periode {rangeLabel}</div>
-            <Badge tone="warning" dot>{d.concerns.length} area perhatian</Badge>
+            <Badge tone="warning" dot>{(d.concerns || []).length} area perhatian</Badge>
           </div>
           <div style={{ marginBottom: 22 }}>
             <DataTable columns={[
@@ -1509,13 +1515,13 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
               { key: "nilai", header: "Nilai", mono: true, strong: true },
               { key: "benchmark", header: "Benchmark", mono: true },
               { key: "tren", header: "Tren", render: (v) => <Badge tone={v === "Memburuk" ? "negative" : v === "Membaik" ? "positive" : "neutral"} size="sm">{v}</Badge> },
-            ]} rows={d.concerns.map((c, i) => ({ ...c, no: i + 1 }))} />
+            ]} rows={(d.concerns || []).map((c, i) => ({ ...c, no: i + 1 }))} />
           </div>
 
           {/* Uraian rinci */}
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 12 }}>Uraian Rinci &amp; Rekomendasi</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {d.concerns.map((c) => (
+            {(d.concerns || []).map((c) => (
               <Card key={c.title} padding="md" style={{ borderLeft: `3px solid var(--${c.level === "negative" ? "negative" : c.level === "warning" ? "warning" : "teal"}-500)` }}>
                 <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                   <div style={{ width: 38, height: 38, borderRadius: 9, background: `var(--${c.level === "negative" ? "negative" : c.level === "warning" ? "warning" : "info"}-050)`, color: `var(--${c.level === "negative" ? "negative" : c.level === "warning" ? "warning" : "teal"}-600)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1626,13 +1632,19 @@ function AgentRisk({ d, caseCtx }) {
               ))}
             </div>
           </div>
-          <div style={{ marginTop: 16, borderTop: "1px solid var(--border-subtle)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ marginTop: 16, borderTop: "1px solid var(--border-subtle)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {d.mscore ? <Badge tone={/manipulasi/i.test(d.mscore.verdict || "") ? "negative" : /abu/i.test(d.mscore.verdict || "") ? "warning" : "positive"} dot>M-Score: {d.mscore.verdict}</Badge> : null}
               {d.fscore ? <Badge tone={/lemah/i.test(d.fscore.verdict || "") ? "negative" : /sedang/i.test(d.fscore.verdict || "") ? "warning" : "positive"} dot>F-Score: {d.fscore.value}/9 ({d.fscore.verdict})</Badge> : null}
             </div>
-            {d.summary ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.6 }}>{d.summary}</div> : null}
-            {d.recommendation ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.6, background: "var(--bg-subtle)", borderLeft: "3px solid var(--risk-high)", borderRadius: 8, padding: "10px 12px" }}><strong style={{ color: "var(--text-strong)" }}>Rekomendasi: </strong>{d.recommendation}</div> : null}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 6 }}>Ringkasan Temuan</div>
+              <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.7 }}>{d.summary || `Teridentifikasi ${(d.flags || []).length} temuan dengan komposit risiko ${d.level || "sedang"}. Perhatian utama terpusat pada ${(d.flags || []).slice(0, 3).map((f) => f.area).filter(Boolean).join(", ") || "beberapa area keuangan"}. Skor forensik: M-Score ${d.mscore ? d.mscore.verdict : "-"}, F-Score ${d.fscore ? d.fscore.value + "/9" : "-"}.`}</div>
+            </div>
+            {d.recommendation ? <div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 6 }}>Rekomendasi Tindak Lanjut</div>
+              <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.7, borderLeft: "3px solid var(--risk-high)", paddingLeft: 12 }}>{d.recommendation}</div>
+            </div> : null}
           </div>
         </Card>
         <Card>
