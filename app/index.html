@@ -1484,6 +1484,9 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
             Bagian ini merangkum kelemahan dan area perhatian yang muncul dari analisis keuangan. Untuk sinyal fraud dan modus kecurangan, gunakan Agen Risiko &amp; Fraud.
           </Alert>
           <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.55 }}>Temuan berikut ditinjau untuk periode <strong style={{ color: "var(--text-strong)" }}>{rangeLabel}</strong> ({nYears} tahun), berdasarkan dokumen yang terunggah.</div>
+          {(d.concerns || []).length === 0 ? (
+            <Card padding="lg" style={{ marginTop: 4 }}><div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "24px", textAlign: "center" }}><Icon n="clipboard-check" s={28} style={{ color: "var(--text-faint)" }} /><div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)" }}>Belum ada temuan untuk ditampilkan</div><div style={{ fontSize: 12.5, color: "var(--text-muted)", maxWidth: 440, lineHeight: 1.6 }}>Jalankan <b>Analisis ulang</b> pada agen ini (versi terbaru) agar Red Flags & Concern terisi. Bila sudah dijalankan ulang dan tetap kosong, kemungkinan dokumen belum memuat data yang cukup untuk menyimpulkan area perhatian.</div></div></Card>
+          ) : (<React.Fragment>
           {/* Ringkasan tingkat */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
             {[["Tinggi", "negative"], ["Sedang", "warning"], ["Perhatian", "info"]].map(([lbl, lv]) => {
@@ -1551,6 +1554,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
               </Card>
             ))}
           </div>
+          </React.Fragment>)}
         </div>
       )}
       </div>
