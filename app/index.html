@@ -732,7 +732,7 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
           <Button variant="secondary" size="sm" iconLeft={<Icon n="upload" s={15} />} onClick={() => logoRef.current && logoRef.current.click()}>Unggah logo</Button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16 }}>
           {field("Nama perusahaan", <Input value={company} onChange={(e) => setForm && setCompany(e.target.value)} />)}
           {field("Tahun berdiri", <Input value={form.founded} onChange={(e) => setForm({ ...form, founded: e.target.value })} placeholder="mis. 1994" />)}
           {field("Sektor Industri (BI)", <Select value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="Pilih sektor (klasifikasi BI)" options={(window.STX_DATA.sectorsBI || []).concat(form.sector && !(window.STX_DATA.sectorsBI || []).includes(form.sector) ? [form.sector] : [])} />)}
@@ -885,7 +885,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
 
       {/* Step 1: documents */}
       <SectionTitle eyebrow="Langkah 1" title="Dokumen & Keterangan" right={<Badge tone="accent" dot>{uploaded.length ? `${uploaded.length} dokumen terunggah` : `${docs.length} contoh`}</Badge>} />
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 16, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)", gap: 16, marginBottom: 28 }}>
         <Card>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {uploaded.length === 0 && <div style={{ fontSize: 12, color: "var(--text-faint)", padding: "2px 2px 6px" }}>Belum ada dokumen diunggah. Contoh di bawah hanya ilustrasi — unggah dokumen asli untuk dianalisis AI.</div>}
@@ -932,7 +932,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
       {/* Step 2: agent selection */}
       {err && <div style={{ marginBottom: 14 }}><Alert tone="negative" title="Tidak dapat menjalankan analisis" onClose={() => setErr("")}>{err}</Alert></div>}
       <SectionTitle eyebrow="Langkah 2" title="Pilih Agen Analisis" right={<span style={{ fontSize: 12, color: "var(--text-muted)" }}>Setiap agen membaca dokumen asli — bukan ringkasan.</span>} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
         {agents.map((a) => {
           const job = jobOf(a.id);
           const isRun = job.status === "running";
@@ -1002,7 +1002,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
             {ef.logo && <Button variant="ghost" size="sm" onClick={() => setEf((p) => ({ ...p, logo: null }))}>Hapus</Button>}
             <Button variant="secondary" size="sm" iconLeft={<Icon n="upload" s={14} />} onClick={() => editLogoRef.current && editLogoRef.current.click()}>Unggah</Button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 14 }}>
             {efield("Nama perusahaan", <Input value={ef.company} onChange={(e) => setEf((p) => ({ ...p, company: e.target.value }))} />)}
             {efield("Tahun berdiri", <Input value={ef.founded} onChange={(e) => setEf((p) => ({ ...p, founded: e.target.value }))} />)}
             {efield("Sektor Industri (BI)", <Select value={ef.sector} onChange={(e) => setEf((p) => ({ ...p, sector: e.target.value }))} placeholder="Pilih sektor (klasifikasi BI)" options={(window.STX_DATA.sectorsBI || []).concat(ef.sector && !(window.STX_DATA.sectorsBI || []).includes(ef.sector) ? [ef.sector] : [])} />)}
@@ -1052,7 +1052,7 @@ function ChatDock({ children }) {
   React.useEffect(refreshIcons);
   if (!open) {
     return (
-      <div style={{ flexShrink: 0, position: "sticky", top: 0 }}>
+      <div style={{ flex: "0 0 auto", position: "sticky", top: 0 }}>
         <button onClick={() => setOpen(true)} title="Buka Tanya AI"
           style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: 46, padding: "16px 0", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", background: "var(--surface)", color: "var(--accent)", cursor: "pointer", boxShadow: "var(--shadow-sm)" }}>
           <Icon n="message-square" s={18} />
@@ -1062,7 +1062,7 @@ function ChatDock({ children }) {
     );
   }
   return (
-    <div style={{ width: 348, flexShrink: 0, position: "sticky", top: 0 }}>
+    <div style={{ flex: "0 0 348px", position: "sticky", top: 0 }}>
       {React.cloneElement(children, { onCollapse: () => setOpen(false) })}
     </div>
   );
@@ -1188,8 +1188,8 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
   };
 
   return (
-    <div style={{ display: "flex", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
+      <div style={{ flex: "1 1 680px", minWidth: 0 }}>
       <ResultToolbar version="v3" onExport={onExportPDF} />
       <div style={{ marginBottom: 22 }}>
         <Tabs value={tab} onChange={setTab} items={[
@@ -1224,10 +1224,10 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
       {/* ---- Bagian 1: Ringkasan ---- */}
       {tab === "ringkasan" && (
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 20 }}>
             {kpis.map((k, i) => <StatCard key={k.label} {...k} accent={i === 0} icon={<Icon n={k.icon || ["trending-up", "percent", "wallet", "waves"][i] || "circle-dollar-sign"} s={18} />} />)}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 16, marginBottom: 20 }}>
             <Card>
               <CardHeader title="Tren Pendapatan" subtitle={`Rp Triliun · ${rangeLabel}`} action={multi ? <Badge tone="positive" dot>CAGR {cagr.toFixed(1).replace(".", ",")}%</Badge> : null} />
               {revSlice.length > 1 ? (
@@ -1249,7 +1249,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
               <BarChart series={marginSlice} labels={labelSlice} height={190} color="var(--navy-600)" />
             </Card>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 16 }}>
             <Card padding="none">
               <div style={{ padding: "16px 18px 12px" }}><CardHeader title="Rasio Keuangan Utama" subtitle={`Konsolidasi FY${endYear} vs benchmark industri`} /></div>
               <DataTable columns={[
@@ -1339,7 +1339,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
           </Alert>
           <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.55 }}>Temuan berikut ditinjau untuk periode <strong style={{ color: "var(--text-strong)" }}>{rangeLabel}</strong> ({nYears} tahun), berdasarkan dokumen yang terunggah.</div>
           {/* Ringkasan tingkat */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
             {[["Tinggi", "negative"], ["Sedang", "warning"], ["Perhatian", "info"]].map(([lbl, lv]) => {
               const n = d.concerns.filter((c) => concernLabel[c.level] === lbl).length;
               const clr = lv === "info" ? "teal" : lv;
@@ -1436,10 +1436,10 @@ function AgentRisk({ d, caseCtx }) {
     }
   });
   return (
-    <div style={{ display: "flex", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
+      <div style={{ flex: "1 1 680px", minWidth: 0 }}>
       <ResultToolbar version="v2" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: 16, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.1fr)", gap: 16, marginBottom: 20 }}>
         <Card>
           <CardHeader title="Indeks Risiko Fraud" subtitle="Komposit dari 4 dimensi temuan" action={<RiskBadge level={d.level} />} />
           <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
@@ -1461,7 +1461,7 @@ function AgentRisk({ d, caseCtx }) {
               {rowLabels.map((r) => <span key={r} style={{ height: 18, lineHeight: "18px" }}>{r}</span>)}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 4 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 4 }}>
                 {d.matrix.flatMap((row, ri) => row.map((lv, ci) => (
                   <RiskCell key={ri + "-" + ci} level={lv} style={{ minHeight: 34 }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center", alignItems: "center" }}>
@@ -1472,7 +1472,7 @@ function AgentRisk({ d, caseCtx }) {
                   </RiskCell>
                 )))}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 4, marginTop: 5 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 4, marginTop: 5 }}>
                 {colLabels.map((c) => <span key={c} style={{ fontSize: 9, color: "var(--text-faint)", textAlign: "center" }}>{c}</span>)}
               </div>
             </div>
@@ -1532,8 +1532,8 @@ function AgentTransform({ d, caseCtx }) {
   React.useEffect(refreshIcons);
   const company = (caseCtx && caseCtx.company) || "Perusahaan";
   return (
-    <div style={{ display: "flex", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
+      <div style={{ flex: "1 1 680px", minWidth: 0 }}>
       <ResultToolbar version="v1" />
       {/* Ambition banner */}
       <div style={{ background: "var(--grad-navy)", borderRadius: "var(--radius-xl)", padding: "24px 26px", color: "#fff", marginBottom: 20, position: "relative", overflow: "hidden" }}>
@@ -1546,7 +1546,7 @@ function AgentTransform({ d, caseCtx }) {
       </div>
 
       {/* Pillars */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 24 }}>
         {d.pillars.map((p) => (
           <Card key={p.name} padding="md">
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-quiet)", color: "var(--accent-hover)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n={p.icon} s={20} /></div>
@@ -1873,7 +1873,7 @@ function Settings({ user, onUpdateUser }) {
 
       {tab === "ai" && (<React.Fragment>
       <SectionTitle eyebrow="Konfigurasi" title="Penyedia Model AI" />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 20 }}>
         {providers.map((p) => {
           const on = provider === p.id;
           return (
