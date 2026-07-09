@@ -775,7 +775,7 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
     setAfErr("");
     for (const f of files) {
       const r = await AI.parseFile(f);
-      setPrimerDocs((prev) => [...prev, { name: r.name, ext: r.ext, chars: r.chars, text: r.text }]);
+      setPrimerDocs((prev) => [...prev, { name: r.name, ext: r.ext, chars: r.chars, text: r.text, docType: guessDocType(r.name, r.ext) }]);
     }
     if (e.target) e.target.value = "";
   };
@@ -942,6 +942,14 @@ Object.assign(window, { CaseLibrary, NewCaseFlow });
 /* global React, Icon, refreshIcons, CompanyMark, SectionTitle */
 const WsNS = window.STRATIXDesignSystem_72cbdd;
 
+const DOC_TYPES = ["Laporan Keuangan/Tahunan", "Presentasi Perusahaan", "Artikel Berita/Media", "Dokumen Lainnya"];
+function guessDocType(name, ext) {
+  const n = (name || "").toLowerCase(), e = (ext || "").toLowerCase();
+  if (/present|paparan|deck|slide|\bppt\b/.test(n) || e === "pptx" || e === "ppt") return "Presentasi Perusahaan";
+  if (/berita|news|artikel|media|press|siaran|rilis|koran/.test(n)) return "Artikel Berita/Media";
+  if (e === "pdf" || e === "xlsx" || e === "xls" || e === "csv") return "Laporan Keuangan/Tahunan";
+  return "Dokumen Lainnya";
+}
 function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStartJob, onClearJob, onMarkDirty, onSave, onRequestClose }) {
   const { Card, Badge, Button, Alert, Tag, ProgressBar, Input, Textarea, Select, Dialog } = WsNS;
   const [err, setErr] = React.useState("");
@@ -958,7 +966,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
     caseCtx.docText = caseCtx.docText || [];
     for (const f of files) {
       const r = await AI.parseFile(f);
-      caseCtx.docText.push({ name: r.name, ext: r.ext, chars: r.chars, text: r.text });
+      caseCtx.docText.push({ name: r.name, ext: r.ext, chars: r.chars, text: r.text, docType: guessDocType(r.name, r.ext) });
       force();
     }
     setParsing(false); mark();
@@ -1117,6 +1125,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>{d.chars.toLocaleString("id-ID")} karakter terbaca</div>
                 </div>
+                <div style={{ width: 196, flexShrink: 0 }}><Select value={d.docType || "Laporan Keuangan/Tahunan"} onChange={(e) => { caseCtx.docText[i].docType = e.target.value; mark(); force(); }} options={DOC_TYPES} /></div>
                 <Badge tone={d.chars > 40 ? "positive" : "warning"} size="sm" dot>{d.chars > 40 ? "terbaca" : "kosong"}</Badge>
                 <button onClick={() => removeDoc(i)} title="Hapus" style={{ width: 24, height: 24, border: "none", background: "transparent", color: "var(--text-faint)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon n="x" s={14} /></button>
               </div>
@@ -1262,23 +1271,50 @@ Object.assign(window, { CaseWorkspace });
 const AgNS = window.STRATIXDesignSystem_72cbdd;
 
 /* Shared result toolbar */
-function ResultToolbar({ version = "v3", when, onExport, onRerun, rerunning, extraActions }) {
+function ResultToolbar({ version = "v3", when, onExport, onRerun, rerunning, extraActions, versioning }) {
   const { Button, Badge } = AgNS;
   const [hist, setHist] = React.useState(false);
+  React.useEffect(refreshIcons);
+  const list = (versioning && versioning.list) || [];
+  const activeIndex = versioning ? versioning.activeIndex : -1;
+  const hasHist = list.length > 0;
+  const vLabel = hasHist ? "v" + (activeIndex + 1) : version;
   const stamp = when || "Belum ada info waktu";
+  const pick = (i) => { if (versioning && versioning.onSelect) versioning.onSelect(i); setHist(false); };
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12, position: "relative" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Badge tone="neutral"><span style={{ fontFamily: "var(--font-mono)" }}>{version}</span></Badge>
+        <Badge tone="neutral"><span style={{ fontFamily: "var(--font-mono)" }}>{vLabel}</span></Badge>
+        {hasHist && list.length > 1 ? <span style={{ fontSize: 11, color: "var(--text-faint)" }}>dari {list.length} versi</span> : null}
         <span style={{ fontSize: 12, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="clock" s={13} /> {stamp}</span>
       </div>
       <div style={{ display: "flex", gap: 8, position: "relative" }}>
-        <Button variant="secondary" size="sm" iconLeft={<Icon n="history" s={14} />} onClick={() => setHist(!hist)}>Riwayat</Button>
-        {hist ? <div style={{ position: "absolute", top: 40, right: onExport ? 176 : 92, zIndex: 20, width: 280, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-lg)", padding: 14 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-strong)", marginBottom: 8 }}>Riwayat Analisis</div>
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "var(--text-body)", lineHeight: 1.5 }}><Icon n="check-circle" s={14} style={{ color: "var(--positive-500)", marginTop: 1, flexShrink: 0 }} /><div>Analisis terakhir dijalankan {when ? "pada " + when : "(waktu tidak tercatat)"}. Versi hasil: <b>{version}</b>.</div></div>
-          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10, lineHeight: 1.5 }}>Hasil disimpan otomatis di perangkat. Untuk memperbarui, gunakan "Analisis ulang".</div>
-        </div> : null}
+        <Button variant="secondary" size="sm" iconLeft={<Icon n="history" s={14} />} onClick={() => setHist(!hist)}>Riwayat{hasHist ? " (" + list.length + ")" : ""}</Button>
+        {hist ? (
+          <React.Fragment>
+            <div onClick={() => setHist(false)} style={{ position: "fixed", inset: 0, zIndex: 19 }} />
+            <div style={{ position: "absolute", top: 40, right: onExport ? 176 : 92, zIndex: 20, width: 300, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-lg)", padding: 12 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-strong)", marginBottom: 8 }}>Riwayat Analisis</div>
+              {hasHist ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, maxHeight: 260, overflowY: "auto" }}>
+                  {list.map((_, i) => list.length - 1 - i).map((i) => {
+                    const it = list[i]; const active = i === activeIndex;
+                    return (
+                      <button key={i} onClick={() => pick(i)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", border: "1px solid " + (active ? "var(--accent)" : "var(--border)"), background: active ? "var(--accent-quiet)" : "var(--surface)", borderRadius: 8, padding: "8px 10px", cursor: "pointer" }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 800, color: active ? "var(--accent-hover)" : "var(--text-strong)", flexShrink: 0 }}>v{i + 1}</span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text-body)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.analyzedAt || "waktu tidak tercatat"}</span>
+                        {active ? <Icon n="check" s={14} style={{ color: "var(--accent-hover)", flexShrink: 0 }} /> : (i === list.length - 1 ? <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--positive-600)", textTransform: "uppercase", flexShrink: 0 }}>terbaru</span> : null)}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>Belum ada riwayat tersimpan.</div>
+              )}
+              <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 10, lineHeight: 1.5, borderTop: "1px solid var(--border-subtle)", paddingTop: 8 }}>Pilih versi untuk menampilkannya kembali. Setiap "Analisis ulang" menyimpan versi baru tanpa menghapus yang lama.</div>
+            </div>
+          </React.Fragment>
+        ) : null}
         <Button variant="secondary" size="sm" loading={rerunning} iconLeft={rerunning ? null : <Icon n="refresh-cw" s={14} />} onClick={onRerun}>{rerunning ? "Menganalisis…" : "Analisis ulang"}</Button>
         {extraActions}
         {onExport ? <Button variant="primary" size="sm" iconLeft={<Icon n="download" s={14} />} onClick={onExport}>Ekspor PDF</Button> : null}
@@ -1754,10 +1790,83 @@ function printRiskReport(d, caseCtx) {
   openReportPreview("Risiko & Fraud — " + company, bodyHtml);
 }
 
+function printTransformReport(d, caseCtx) {
+  const esc = stxEscape;
+  const company = (caseCtx && caseCtx.company) || "Perusahaan";
+  const rpM = (v) => v == null ? "\u2014" : Math.round(v).toLocaleString("id-ID");
+  const cagr = (v) => v == null ? "\u2014" : Number(v).toFixed(1).replace(".", ",") + "%";
+  const projTable = (title, rows, labels) => !Array.isArray(rows) || !rows.length ? "" : `
+    <div style="font-size:13px;font-weight:700;color:#0E2547;margin:14px 0 6px;">${esc(title)} <span style="font-size:10px;color:#6B7C8E;font-weight:500;">Rp Miliar</span></div>
+    <table style="table-layout:fixed;font-size:11.5px;">
+      <colgroup><col style="width:30%"/>${labels.map(() => "<col/>").join("")}<col style="width:64px"/></colgroup>
+      <tr style="background:#0E2547;color:#fff;"><th style="text-align:left;padding:6px 9px;">Item</th>${labels.map((y) => `<th style="text-align:right;padding:6px 9px;font-family:'IBM Plex Mono',monospace;">${esc(String(y))}</th>`).join("")}<th style="text-align:right;padding:6px 9px;color:#6BD8E4;">CAGR</th></tr>
+      ${rows.map((r) => `<tr><td style="padding:6px 9px;border-bottom:1px solid #eee;font-weight:600;">${esc(r.item || r.segment || "")}</td>${(r.values || []).map((v) => `<td style="text-align:right;padding:6px 9px;border-bottom:1px solid #eee;font-family:'IBM Plex Mono',monospace;">${rpM(v)}</td>`).join("")}<td style="text-align:right;padding:6px 9px;border-bottom:1px solid #eee;font-family:'IBM Plex Mono',monospace;color:#12A3B4;font-weight:700;">${cagr(r.cagr)}</td></tr>`).join("")}
+    </table>`;
+  const reviewHtml = (d.review || []).map((sec) => `
+    <div style="margin:0 0 13px;page-break-inside:avoid;">
+      <div style="font-size:13px;font-weight:700;color:#0E2547;margin-bottom:4px;">${esc(sec.h)}</div>
+      ${String(sec.b || "").split(/\n\s*\n|\n(?=\s*Implikasi strategis)/i).map((pp) => pp.trim() ? `<div style="font-size:11.5px;line-height:1.7;color:#22303F;margin:0 0 7px;">${esc(pp.trim())}</div>` : "").join("")}
+    </div>`).join("");
+  const pillarsHtml = (d.pillars || []).map((p, i) => `
+    <div class="card" style="display:inline-block;width:47%;vertical-align:top;margin-right:1%;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8A98A8;">Pilar ${i + 1}</div>
+      <div style="font-size:13px;font-weight:700;color:#0E2547;margin-top:2px;">${esc(p.name || "")}</div>
+      <div style="font-size:11.5px;color:#12A3B4;font-weight:700;margin-top:5px;">${esc(p.target || "")}</div>
+    </div>`).join("");
+  const targetsHtml = (d.targets || []).length ? `<table style="font-size:12px;">${(d.targets || []).map((t) => `<tr><td style="padding:7px 10px;border-bottom:1px solid #eee;font-weight:700;color:#12A3B4;width:70px;font-family:'IBM Plex Mono',monospace;">${esc(String(t.year || ""))}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;color:#22303F;">${esc(String(t.target || ""))}</td></tr>`).join("")}</table>` : "";
+  const quickHtml = (d.quickWins || []).map((q) => `
+    <div class="card">
+      <div style="font-size:12.5px;font-weight:700;color:#0E2547;">${esc(q.title || "")} ${q.theme ? `<span style="font-size:10px;color:#6B7C8E;font-weight:600;">&middot; ${esc(q.theme)}</span>` : ""}</div>
+      <div style="font-size:11px;color:#22303F;margin-top:3px;">${esc(q.impact || "")}${q.timeframe ? ` <span style="color:#6B7C8E;">(${esc(q.timeframe)})</span>` : ""}</div>
+    </div>`).join("");
+  const phasesHtml = (d.phases || []).map((ph) => `
+    <div style="margin-bottom:13px;page-break-inside:avoid;">
+      <div style="font-size:13px;font-weight:700;color:#0E2547;">${esc(String(ph.year || ""))} \u2014 ${esc(ph.title || "")}${ph.invest ? ` <span style="font-size:10.5px;color:#6B7C8E;font-weight:600;">&middot; Investasi ${esc(ph.invest)}</span>` : ""}</div>
+      ${ph.kpi ? `<div style="font-size:10.5px;color:#0E7C8B;margin:2px 0 5px;">KPI fase: ${esc(ph.kpi)}</div>` : ""}
+      ${(ph.initiatives || []).map((it) => `<div style="font-size:11px;line-height:1.55;color:#22303F;margin:0 0 4px;padding-left:10px;border-left:2px solid #E1E7EE;"><b>${esc(it.name || "")}</b>${it.desc ? " \u2014 " + esc(it.desc) : ""}${it.impact_quant ? ` <span style="color:#1a8f5a;">[${esc(it.impact_quant)}]</span>` : ""}${it.impact_other ? ` <span style="color:#6B7C8E;">(${esc(it.impact_other)})</span>` : ""}</div>`).join("")}
+    </div>`).join("");
+  const perspectives = ["Keuangan", "Pelanggan", "Proses Internal", "Pembelajaran & Pertumbuhan"];
+  const scLabels = (d.projection && d.projection.labels) || [];
+  const scorecardHtml = Array.isArray(d.scorecard) && d.scorecard.length ? perspectives.map((per) => {
+    const rows = d.scorecard.filter((k) => k.perspective === per);
+    if (!rows.length) return "";
+    return `<div style="font-size:12px;font-weight:700;color:#0E7C8B;margin:12px 0 5px;">${esc(per)}</div>
+      <table style="font-size:11px;table-layout:fixed;"><colgroup><col style="width:44%"/><col style="width:56px"/>${scLabels.map(() => "<col/>").join("")}</colgroup>
+      <tr style="background:#F1F5F9;"><th style="text-align:left;padding:5px 8px;">KPI</th><th style="text-align:left;padding:5px 8px;">Satuan</th>${scLabels.map((y) => `<th style="text-align:right;padding:5px 8px;font-family:'IBM Plex Mono',monospace;">${esc(String(y))}</th>`).join("")}</tr>
+      ${rows.map((k) => `<tr><td style="padding:5px 8px;border-bottom:1px solid #eee;font-weight:600;">${esc(k.kpi || "")}</td><td style="padding:5px 8px;border-bottom:1px solid #eee;color:#6B7C8E;">${esc(k.unit || "")}</td>${(k.values || []).map((v) => `<td style="text-align:right;padding:5px 8px;border-bottom:1px solid #eee;font-family:'IBM Plex Mono',monospace;">${v == null ? "\u2014" : String(v).replace(".", ",")}</td>`).join("")}</tr>`).join("")}
+      </table>`;
+  }).join("") : "";
+  const innoHtml = d.innovation && Array.isArray(d.innovation.ideas) ? `${d.innovation.intro ? `<div style="font-size:12px;line-height:1.6;color:#22303F;margin-bottom:10px;">${esc(d.innovation.intro)}</div>` : ""}${d.innovation.ideas.map((it) => `
+    <div class="card">
+      <div style="font-size:12.5px;font-weight:700;color:#0E2547;">${esc(it.title || "")}</div>
+      <div style="font-size:11px;line-height:1.6;color:#22303F;margin-top:4px;"><b>Benchmark:</b> ${esc(it.benchmark || "-")}</div>
+      ${it.fit ? `<div style="font-size:11px;line-height:1.6;color:#22303F;margin-top:2px;"><b>Kesesuaian:</b> ${esc(it.fit)}</div>` : ""}
+      <div style="font-size:11px;line-height:1.6;color:#1a8f5a;margin-top:2px;"><b>Dampak:</b> ${esc(it.impact || "-")}</div>
+      <div style="font-size:11px;line-height:1.6;color:#c0392b;margin-top:2px;"><b>Risiko:</b> ${esc(it.risk || "-")}</div>
+    </div>`).join("")}` : "";
+  const bodyHtml = `
+    <div style="border-bottom:2px solid #0E2547;padding-bottom:14px;margin-bottom:8px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#12A3B4;">STRATIX &middot; Rencana Transformasi 5 Tahun</div>
+      <div style="font-size:22px;font-weight:800;color:#0E2547;margin-top:5px;">${esc(company)}</div>
+      <div style="font-size:12px;color:#6B7C8E;margin-top:3px;">${caseCtx && caseCtx.id ? esc(caseCtx.id) + " &middot; " : ""}Horizon ${esc(d.horizon || "")} &middot; ${new Date().toLocaleString("id-ID")}</div>
+      ${d.ambition ? `<div style="font-size:15px;font-weight:800;color:#0E2547;margin-top:12px;line-height:1.4;">${esc(d.ambition)}</div>` : ""}
+      ${d.context ? `<div style="font-size:12.5px;color:#22303F;margin-top:6px;line-height:1.6;">${esc(d.context)}</div>` : ""}
+    </div>
+    ${pillarsHtml ? `<div class="stx-h2">Pilar Transformasi</div>${pillarsHtml}` : ""}
+    ${targetsHtml ? `<div class="stx-h2">Sasaran Utama per Tahun</div>${targetsHtml}` : ""}
+    ${quickHtml ? `<div class="stx-h2">Quick Wins (0\u201312 bulan)</div>${quickHtml}` : ""}
+    ${phasesHtml ? `<div class="stx-h2">Roadmap Fase Transformasi</div>${phasesHtml}` : ""}
+    ${scorecardHtml ? `<div class="stx-h2">Balanced Scorecard</div>${scorecardHtml}` : ""}
+    ${(d.projection ? `<div class="stx-h2">Proyeksi Keuangan</div>${projTable("Laba Rugi", d.projection.pnl, d.projection.labels || [])}${projTable("Neraca", d.projection.balance, d.projection.labels || [])}${projTable("Rincian Pendapatan per Jenis Usaha", d.projection.revenueBreakdown, d.projection.labels || [])}` : "")}
+    ${innoHtml ? `<div class="stx-h2">Inovasi & Terobosan</div>${innoHtml}` : ""}
+    ${reviewHtml ? `<div class="stx-h2">Uraian Strategis</div>${reviewHtml}` : ""}`;
+  openReportPreview("Rencana Transformasi \u2014 " + company, bodyHtml);
+}
+
 
 
 /* ---------- Agen Analis Keuangan ---------- */
-function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyzedAt }) {
+function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyzedAt, versioning }) {
   const { Card, CardHeader, StatCard, DataTable, Badge, Alert, Tabs, Select, Button } = AgNS;
   const [tab, setTab] = React.useState("ringkasan");
   React.useEffect(refreshIcons);
@@ -1839,7 +1948,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyz
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
-      <ResultToolbar version="v3" onExport={onExportPDF} onRerun={onRerun} rerunning={rerunning} when={analyzedAt} />
+      <ResultToolbar version="v3" versioning={versioning} onExport={onExportPDF} onRerun={onRerun} rerunning={rerunning} when={analyzedAt} />
       <div style={{ marginBottom: 22 }}>
         <Tabs value={tab} onChange={setTab} items={[
           { value: "ringkasan", label: "Ringkasan", icon: <Icon n="layout-dashboard" s={15} /> },
@@ -2142,7 +2251,7 @@ function ScoreBlock({ kind, s }) {
   );
 }
 
-function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt }) {
+function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt, versioning }) {
   const { Card, CardHeader, Badge, Alert, RiskBadge, RiskCell } = AgNS;
   React.useEffect(refreshIcons);
   const company = (caseCtx && caseCtx.company) || "Perusahaan";
@@ -2164,7 +2273,7 @@ function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
-      <ResultToolbar version="v2" onExport={() => printRiskReport(d, caseCtx)} onRerun={onRerun} rerunning={rerunning} when={analyzedAt} />
+      <ResultToolbar version="v2" versioning={versioning} onExport={() => printRiskReport(d, caseCtx)} onRerun={onRerun} rerunning={rerunning} when={analyzedAt} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.1fr)", gap: 16, marginBottom: 20 }}>
         <Card>
           <CardHeader title="Indeks Risiko Fraud" subtitle="Komposit dari 4 dimensi temuan" action={<RiskBadge level={d.level} />} />
@@ -2262,8 +2371,7 @@ function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt }) {
 }
 
 /* ---------- Agen Transformasi ---------- */
-function AgentTransform({ d, caseCtx, onRerun, rerunning, analyzedAt, onExportDeck }) {
-  const [deckOpen, setDeckOpen] = React.useState(false);
+function AgentTransform({ d, caseCtx, onRerun, rerunning, analyzedAt, onExportDeck, versioning }) {
   const { Card, Badge, Alert, Tabs, Button } = AgNS;
   const [ttab, setTtab] = React.useState("ringkasan");
   React.useEffect(refreshIcons);
@@ -2309,8 +2417,7 @@ function AgentTransform({ d, caseCtx, onRerun, rerunning, analyzedAt, onExportDe
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
-      <ResultToolbar version="v1" onRerun={onRerun} rerunning={rerunning} when={analyzedAt} extraActions={<Button variant="secondary" size="sm" iconLeft={<Icon n="presentation" s={14} />} onClick={() => setDeckOpen(true)}>Pitch Deck</Button>} />
-      {deckOpen && <PitchDeckModal caseObj={caseCtx} onClose={() => setDeckOpen(false)} />}
+      <ResultToolbar version="v1" versioning={versioning} onExport={() => printTransformReport(d, caseCtx)} onRerun={onRerun} rerunning={rerunning} when={analyzedAt} />
       <div style={{ marginBottom: 18 }}>
         <Tabs value={ttab} onChange={setTtab} items={[
           { value: "ringkasan", label: "Ringkasan", icon: <Icon n="rocket" s={15} /> },
@@ -2995,6 +3102,7 @@ function App() {
       AI.analyzeFinance({ company: caseObj.company, contextText: ctx })
         .then((result) => {
           result.analyzedAt = new Date().toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+          { const _prev = caseObj.analysis && caseObj.analysis.finance; let _ha = (caseObj.history && caseObj.history.finance) || []; if (!_ha.length && _prev) _ha = [_prev]; caseObj.history = Object.assign({}, caseObj.history, { finance: _ha.concat([result]) }); }
           caseObj.analysis = Object.assign({}, caseObj.analysis, { finance: result });
           if (!caseObj.agents.includes("finance")) caseObj.agents.push("finance");
           markDirty(caseObj.id);
@@ -3005,6 +3113,7 @@ function App() {
       AI.analyzeRisk({ company: caseObj.company, contextText: ctx })
         .then((result) => {
           result.analyzedAt = new Date().toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+          { const _prev = caseObj.analysis && caseObj.analysis.risk; let _ha = (caseObj.history && caseObj.history.risk) || []; if (!_ha.length && _prev) _ha = [_prev]; caseObj.history = Object.assign({}, caseObj.history, { risk: _ha.concat([result]) }); }
           caseObj.analysis = Object.assign({}, caseObj.analysis, { risk: result });
           if (!caseObj.agents.includes("risk")) caseObj.agents.push("risk");
           markDirty(caseObj.id);
@@ -3016,6 +3125,7 @@ function App() {
       AI.analyzeTransform({ company: caseObj.company, contextText: ctx, priorFindings: prior })
         .then((result) => {
           result.analyzedAt = new Date().toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+          { const _prev = caseObj.analysis && caseObj.analysis.transform; let _ha = (caseObj.history && caseObj.history.transform) || []; if (!_ha.length && _prev) _ha = [_prev]; caseObj.history = Object.assign({}, caseObj.history, { transform: _ha.concat([result]) }); }
           caseObj.analysis = Object.assign({}, caseObj.analysis, { transform: result });
           if (!caseObj.agents.includes("transform")) caseObj.agents.push("transform");
           markDirty(caseObj.id);
@@ -3048,6 +3158,25 @@ function App() {
     setActiveCaseId(c.id); setView("workspace");
   };
   const markDirty = (id) => { setDirtyIds((p) => ({ ...p, [id]: true })); persist(); };
+  const agentHist = (c, agent) => {
+    const a = (c && c.analysis && c.analysis[agent]) || null;
+    let arr = (c && c.history && c.history[agent]) || [];
+    if ((!arr || !arr.length) && a) arr = [a];
+    let idx = arr.length - 1;
+    if (a) {
+      const byRef = arr.indexOf(a);
+      if (byRef >= 0) idx = byRef;
+      else { const byStamp = arr.findIndex((x) => x && x.analyzedAt === a.analyzedAt); if (byStamp >= 0) idx = byStamp; }
+    }
+    return { arr: arr, idx: Math.max(0, idx) };
+  };
+  const selectVersion = (c, agent, i) => {
+    const arr = (c && c.history && c.history[agent]) || [];
+    if (!arr[i]) return;
+    c.analysis = Object.assign({}, c.analysis, { [agent]: arr[i] });
+    markDirty(c.id);
+  };
+  const vprops = (agent) => { const hh = agentHist(activeCase, agent); return { list: hh.arr, activeIndex: hh.idx, onSelect: (i) => selectVersion(activeCase, agent, i) }; };
   const saveCase = (id) => setDirtyIds((p) => ({ ...p, [id]: false }));
   const doClose = (id) => {
     setOpenCases((prev) => {
@@ -3089,7 +3218,7 @@ function App() {
   if (view === "library") content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
   else if (view === "newcase") content = <NewCaseFlow nextIndex={nextIndex} onCancel={() => setView("library")} onCreate={(c) => { const next = [c, ...cases]; casesRef.current = next; setCases(next); openCase(c); persist(); }} />;
   else if (view === "workspace" && activeCase) content = <CaseWorkspace caseCtx={activeCase} docs={D.documents} agents={D.agents} dirty={!!dirtyIds[activeCaseId]} jobs={jobs} onStartJob={startJob} onClearJob={clearJob} onMarkDirty={() => markDirty(activeCaseId)} onSave={() => saveCase(activeCaseId)} onRequestClose={() => requestClose(activeCaseId)} onRunAgent={(id) => { setView("agent-" + id); }} />;
-  else if (view === "agent-finance" && activeCase) content = <AgentFinance d={(activeCase.analysis && activeCase.analysis.finance) || D.finance} caseCtx={activeCase} onRerun={() => startJob(activeCase, "finance")} rerunning={(jobs[jobKey(activeCaseId, "finance")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.finance && activeCase.analysis.finance.analyzedAt} onGenerateReview={(periodLabel, periodKey) => {
+  else if (view === "agent-finance" && activeCase) content = <AgentFinance d={(activeCase.analysis && activeCase.analysis.finance) || D.finance} caseCtx={activeCase} versioning={vprops("finance")} onRerun={() => startJob(activeCase, "finance")} rerunning={(jobs[jobKey(activeCaseId, "finance")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.finance && activeCase.analysis.finance.analyzedAt} onGenerateReview={(periodLabel, periodKey) => {
     const AI = window.STX_AI; const cObj = activeCase;
     const ctx = window.STX_AI.buildContext(cObj.docText);
     return AI.analyzeFinanceReview({ company: cObj.company, contextText: ctx, periodLabel }).then((review) => {
@@ -3100,8 +3229,8 @@ function App() {
       return review;
     });
   }} />;
-  else if (view === "agent-risk" && activeCase) content = <AgentRisk d={(activeCase.analysis && activeCase.analysis.risk) || D.risk} caseCtx={activeCase} onRerun={() => startJob(activeCase, "risk")} rerunning={(jobs[jobKey(activeCaseId, "risk")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.risk && activeCase.analysis.risk.analyzedAt} />;
-  else if (view === "agent-transform" && activeCase) content = <AgentTransform d={(activeCase.analysis && activeCase.analysis.transform) || D.transform} caseCtx={activeCase} onRerun={() => startJob(activeCase, "transform")} rerunning={(jobs[jobKey(activeCaseId, "transform")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.transform && activeCase.analysis.transform.analyzedAt} />;
+  else if (view === "agent-risk" && activeCase) content = <AgentRisk d={(activeCase.analysis && activeCase.analysis.risk) || D.risk} caseCtx={activeCase} versioning={vprops("risk")} onRerun={() => startJob(activeCase, "risk")} rerunning={(jobs[jobKey(activeCaseId, "risk")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.risk && activeCase.analysis.risk.analyzedAt} />;
+  else if (view === "agent-transform" && activeCase) content = <AgentTransform d={(activeCase.analysis && activeCase.analysis.transform) || D.transform} caseCtx={activeCase} versioning={vprops("transform")} onRerun={() => startJob(activeCase, "transform")} rerunning={(jobs[jobKey(activeCaseId, "transform")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.transform && activeCase.analysis.transform.analyzedAt} />;
   else if (view === "settings") content = <Settings user={user} onUpdateUser={setUser} initialTab={settingsTab} />;
   else content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
 
@@ -3136,7 +3265,6 @@ function App() {
         </React.Fragment>}>
         <div style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.6 }}>Case ini beserta seluruh dokumen dan hasil analisis yang tersimpan akan dihapus permanen dari perangkat ini. Tindakan ini tidak dapat dibatalkan.</div>
       </Dialog>
-      <DeckGenIndicator />
     </React.Fragment>
   );
 }
