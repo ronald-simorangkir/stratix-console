@@ -2,15 +2,29 @@
    Personal/internal use: API key lives in this browser (localStorage).
    Requires internet: calls api.anthropic.com and loads parser libs from CDN. */
 (function () {
-  const LS_KEY = "stx-anthropic-key";
-  const LS_MODEL = "stx-anthropic-model";
-  const DEFAULT_MODEL = "claude-sonnet-5";
-  const API = "https://api.anthropic.com/v1/messages";
-
-  const getKey = () => { try { return localStorage.getItem(LS_KEY) || ""; } catch (e) { return ""; } };
-  const setKey = (k) => { try { localStorage.setItem(LS_KEY, k || ""); } catch (e) {} };
-  const getModel = () => { try { return localStorage.getItem(LS_MODEL) || DEFAULT_MODEL; } catch (e) { return DEFAULT_MODEL; } };
-  const setModel = (m) => { try { localStorage.setItem(LS_MODEL, m || DEFAULT_MODEL); } catch (e) {} };
+  // ---- Multi-provider AI engine (Anthropic / Gemini / OpenAI) ----
+  const PROVIDERS = {
+    anthropic: { label: "Anthropic Claude", default: "claude-sonnet-5",
+      models: [["claude-opus-4-8", "Claude Opus 4.8 (paling tajam)"], ["claude-sonnet-5", "Claude Sonnet 5 (seimbang)"], ["claude-haiku-4-5-20251001", "Claude Haiku 4.5 (cepat)"]] },
+    gemini: { label: "Google Gemini", default: "gemini-2.5-pro",
+      models: [["gemini-2.5-pro", "Gemini 2.5 Pro"], ["gemini-2.5-flash", "Gemini 2.5 Flash (cepat)"]] },
+    openai: { label: "OpenAI", default: "gpt-4o",
+      models: [["gpt-4o", "GPT-4o"], ["gpt-4o-mini", "GPT-4o mini (cepat)"], ["o3", "o3 (reasoning)"]] },
+  };
+  const LS_PROVIDER = "stx-ai-provider";
+  const keyLS = (p) => "stx-key-" + p;
+  const modelLS = (p) => "stx-model-" + p;
+  const getProvider = () => { try { const p = localStorage.getItem(LS_PROVIDER); return PROVIDERS[p] ? p : "anthropic"; } catch (e) { return "anthropic"; } };
+  const setProvider = (p) => { try { if (PROVIDERS[p]) localStorage.setItem(LS_PROVIDER, p); } catch (e) {} };
+  const getKeyFor = (p) => { try { return localStorage.getItem(keyLS(p)) || ""; } catch (e) { return ""; } };
+  const setKeyFor = (p, k) => { try { localStorage.setItem(keyLS(p), k || ""); } catch (e) {} };
+  const getModelFor = (p) => { try { return localStorage.getItem(modelLS(p)) || PROVIDERS[p].default; } catch (e) { return PROVIDERS[p].default; } };
+  const setModelFor = (p, m) => { try { localStorage.setItem(modelLS(p), m || PROVIDERS[p].default); } catch (e) {} };
+  // Back-compat accessors (operate on the CURRENT provider)
+  const getKey = () => getKeyFor(getProvider());
+  const setKey = (k) => setKeyFor(getProvider(), k);
+  const getModel = () => getModelFor(getProvider());
+  const setModel = (m) => setModelFor(getProvider(), m);
   const hasKey = () => !!getKey();
 
   // ---- lazy CDN loaders ----
@@ -81,32 +95,54 @@
   }
 
   // ---- Anthropic call ----
-  async function callClaude({ system, messages, max_tokens = 4096, temperature = 0.3 }) {
-    const key = getKey();
-    if (!key) throw new Error("API Key Anthropic belum diatur. Buka Pengaturan → API Key.");
-    const res = await fetch(API, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({ model: getModel(), max_tokens, system, messages }),
-    });
+  async function httpJSON(url, opts) {
+    const res = await fetch(url, opts);
     if (!res.ok) {
       let msg = "HTTP " + res.status;
-      try { const j = await res.json(); msg = (j.error && j.error.message) || msg; } catch (e) {}
+      try { const j = await res.json(); msg = (j.error && (j.error.message || j.error)) || msg; } catch (e) {}
       throw new Error(msg);
     }
-    const j = await res.json();
+    return res.json();
+  }
+  async function callAnthropic(key, model, system, messages, max_tokens) {
+    const j = await httpJSON("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model, max_tokens, system, messages }),
+    });
     const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
-    if (!text) {
-      const why = j.stop_reason === "max_tokens"
-        ? "output terpotong oleh limit token — perbesar max_tokens atau persempit pertanyaan"
-        : "tidak ada blok teks pada respons" + (j.stop_reason ? " (stop_reason: " + j.stop_reason + ")" : "");
-      throw new Error("Model tidak mengembalikan teks: " + why);
-    }
+    if (!text && j.stop_reason === "max_tokens") throw new Error("output terpotong oleh limit token");
+    return text;
+  }
+  async function callOpenAI(key, model, system, messages, max_tokens) {
+    const msgs = [{ role: "system", content: system }].concat(messages.map((m) => ({ role: m.role, content: m.content })));
+    const body = { model, messages: msgs };
+    if (/^o\d/.test(model)) { body.max_completion_tokens = max_tokens; } else { body.max_tokens = max_tokens; }
+    const j = await httpJSON("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", "authorization": "Bearer " + key },
+      body: JSON.stringify(body),
+    });
+    return ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "").trim();
+  }
+  async function callGemini(key, model, system, messages, max_tokens) {
+    const contents = messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+    const j = await httpJSON("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(key), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: { maxOutputTokens: max_tokens } }),
+    });
+    const c = j.candidates && j.candidates[0];
+    return ((c && c.content && c.content.parts || []).map((p) => p.text || "").join("")).trim();
+  }
+  async function callClaude({ system, messages, max_tokens = 4096 }) {
+    const p = getProvider(), key = getKeyFor(p), model = getModelFor(p);
+    if (!key) throw new Error("API Key " + PROVIDERS[p].label + " belum diatur. Buka Pengaturan → Model AI.");
+    let text = "";
+    if (p === "anthropic") text = await callAnthropic(key, model, system, messages, max_tokens);
+    else if (p === "openai") text = await callOpenAI(key, model, system, messages, max_tokens);
+    else if (p === "gemini") text = await callGemini(key, model, system, messages, max_tokens);
+    if (!text) throw new Error("Model tidak mengembalikan teks. Coba jalankan ulang atau ganti model/engine.");
     return text;
   }
 
@@ -202,8 +238,8 @@
  "revenueLabels":["2020","2021","2022","2023","2024"],
  "revenueSeries":[number,...],   // WAJIB dalam TRILIUN Rupiah (mis. 5.02 = Rp 5,02 triliun) — JANGAN miliar
  "marginSeries":[number,...],
- "concerns":[{"title":"...","level":"negative|warning|info","area":"...","metric":"...","nilai":"...","benchmark":"...","tren":"Memburuk|Stabil|Membaik","detail":"...","implication":"...","rekomendasi":"..."}],
- "financials":{"labels":["2020","2021","2022","2023","2024"],"lines":{"pendapatan":[number,...],"laba_kotor":[number,...],"beban_usaha":[number,...],"laba_usaha":[number,...],"laba_bersih":[number,...],"total_aset":[number,...],"aset_lancar":[number,...],"aset_tidak_lancar":[number,...],"total_liabilitas":[number,...],"liabilitas_pendek":[number,...],"liabilitas_panjang":[number,...],"kas_operasi":[number,...],"kas_investasi":[number,...],"kas_pendanaan":[number,...]},"bars":{"gross_margin":[number,...],"ebitda_margin":[number,...],"current_ratio":[number,...],"cash_ratio":[number,...],"dte":[number,...],"roe":[number,...],"roa":[number,...],"net_profit_margin":[number,...],"interest_coverage":[number,...],"bopo":[number,...],"rev_growth":[number,...],"ebitda_growth":[number,...],"np_growth":[number,...]},"capex":[number,...]},
+ "concerns":[{"title":"...","level":"negative|warning|info","area":"...","metric":"...","nilai":"...","benchmark":"...","tren":"Memburuk|Stabil|Membaik","detail":"...","modus":"kemungkinan modus/skema yang menyebabkan indikasi ini (mis. channel stuffing, kapitalisasi biaya, round-tripping, dll) — 1-2 kalimat","implication":"...","rekomendasi":"..."}],
+ "financials":{"labels":["2020","2021","2022","2023","2024"],"lines":{"pendapatan":[number,...],"laba_kotor":[number,...],"beban_usaha":[number,...],"laba_usaha":[number,...],"laba_bersih":[number,...],"ebitda":[number,...],"total_aset":[number,...],"aset_lancar":[number,...],"aset_tidak_lancar":[number,...],"total_liabilitas":[number,...],"liabilitas_pendek":[number,...],"liabilitas_panjang":[number,...],"kas_operasi":[number,...],"kas_investasi":[number,...],"kas_pendanaan":[number,...]},"bars":{"gross_margin":[number,...],"ebitda_margin":[number,...],"current_ratio":[number,...],"cash_ratio":[number,...],"dte":[number,...],"roe":[number,...],"roa":[number,...],"net_profit_margin":[number,...],"interest_coverage":[number,...],"bopo":[number,...],"rev_growth":[number,...],"ebitda_growth":[number,...],"np_growth":[number,...]},"capex":[number,...]},
  "ratios":[{"r":"Current Ratio","v":"1,84\u00d7","b":"1,50\u00d7","s":"Baik|Waspada"}],
  "healthScore":number(0-100),
  "healthLabel":"Sehat|Waspada|Kritis",
@@ -211,7 +247,7 @@
  "reviewMeta":{"period":"Tahun Buku ...","basis":"Laporan Keuangan Konsolidasian","prepared":"Agen Analis Keuangan STRATIX"},
  "review":[{"h":"1. Ikhtisar Kinerja","b":"paragraf naratif"},{"h":"2. Profitabilitas & Kualitas Laba","b":"..."},{"h":"3. Likuiditas & Solvabilitas","b":"..."},{"h":"4. Arus Kas","b":"..."},{"h":"5. Efisiensi Modal Kerja","b":"..."},{"h":"6. Struktur Permodalan","b":"..."},{"h":"7. Kesimpulan Analis","b":"..."}]
 }`;
-    const user = `Perusahaan: ${company || "-"}\n\nDOKUMEN:\n${(contextText || "").slice(0, 260000)}\n\nHasilkan JSON sesuai skema berikut. Untuk "review": setiap seksi HARUS thesis-driven & mendalam (2-3 paragraf padat) — mulai dari temuan material, sebut angka spesifik dari dokumen, DEKOMPOSISI driver (mengapa angka bergerak: volume/harga/segmen/biaya/one-off), YoY, kualitas laba & konversi kas, implikasi keputusan, dan risiko. Setingkat memo analis institusional, bukan ringkasan. JANGAN mengarang angka; bila data tak ada, nyatakan eksplisit. Tulis body tiap seksi sebagai beberapa paragraf pendek dipisah satu baris kosong (satu poin per paragraf), dengan paragraf terakhir diawali "Implikasi strategis:". Bersikap kritis & obyektif: bedakan pertumbuhan organik dari one-off/kebijakan, dan sebut terus terang bila kualitas laba/likuiditas mengkhawatirkan. Isi 4-5 concerns, 5-6 ratios. Seri angka sepanjang label. ATURAN UNIT & PERIODE (WAJIB): Dokumen adalah LAPORAN TAHUNAN yang memuat Ikhtisar Data Keuangan multi-tahun (umumnya 5 tahun) dan laporan keuangan komparatif; gabungan beberapa laporan tahunan menutupi rentang tahun yang lebih panjang. Bangun seri untuk SELURUH tahun yang tersedia lintas SEMUA dokumen — JANGAN batasi hanya ke tahun terbaru (komparatif sering mundur hingga 2019). Bila satu tahun muncul di lebih dari satu laporan, pakai angka dari laporan yang paling andal/terbaru untuk tahun tersebut. (1) "revenueLabels" adalah tahun buku yang BENAR-BENAR ADA di dokumen, urut menaik; elemen TERAKHIR = tahun buku TERBARU yang tersedia. (2) "revenueSeries" dalam TRILIUN Rupiah, selaras urutan label. (3) kpis[0] Revenue = tahun buku terbaru, unit "T", nilainya = titik terakhir revenueSeries (Triliun). (4) kpis[2] Net Profit & kpis[3] Free Cash Flow = tahun buku terbaru, unit "M" (Miliar). (5) Semua indikator KPI mencerminkan DATA TERBARU dari dokumen, bukan estimasi generik. (6) Field kartu KPI WAJIB RINGKAS: "value" hanya angka (mis. "Rp 747"), "delta" persen singkat (mis. "+2,6%"), "hint" tag pendek maksimal 8 karakter (mis. "YoY" atau "vs 2023") — JANGAN memasukkan kalimat atau penjelasan panjang ke field kartu; narasi mendalam hanya di "review". EKSTRAKSI SERI MULTI-TAHUN (WAJIB) untuk "financials": "labels" SAMA dengan revenueLabels. Semua "lines" dalam MILIAR Rupiah (mis. 5017 = Rp 5,017 triliun), selaras urutan labels; pakai null bila suatu tahun tak tersedia. "bars" dalam satuan alami: semua "%" KECUALI "dte" (Debt to Equity) yang dalam kali (angka desimal, mis. 0.84). "capex" = belanja modal/pembelian aset tetap per tahun (Miliar, angka POSITIF) untuk menghitung Free Cash Flow = kas_operasi − capex. Ekstrak "lines" dari Laporan Posisi Keuangan (neraca), Laporan Laba Rugi, dan Laporan Arus Kas; jangan mengarang — null bila benar-benar tak ada di dokumen. Keluarkan HANYA JSON, pastikan lengkap dan tertutup.\n${schema}`;
+    const user = `Perusahaan: ${company || "-"}\n\nDOKUMEN:\n${(contextText || "").slice(0, 260000)}\n\nHasilkan JSON sesuai skema berikut. Untuk "review": setiap seksi HARUS thesis-driven & mendalam (2-3 paragraf padat) — mulai dari temuan material, sebut angka spesifik dari dokumen, DEKOMPOSISI driver (mengapa angka bergerak: volume/harga/segmen/biaya/one-off), YoY, kualitas laba & konversi kas, implikasi keputusan, dan risiko. Setingkat memo analis institusional, bukan ringkasan. JANGAN mengarang angka; bila data tak ada, nyatakan eksplisit. Tulis body tiap seksi sebagai beberapa paragraf pendek dipisah satu baris kosong (satu poin per paragraf), dengan paragraf terakhir diawali "Implikasi strategis:". Bersikap kritis & obyektif: bedakan pertumbuhan organik dari one-off/kebijakan, dan sebut terus terang bila kualitas laba/likuiditas mengkhawatirkan. Isi 4-5 concerns (tiap concern WAJIB menyertakan "modus": kemungkinan modus/skema akuntansi/fraud yang menyebabkan indikasi tersebut), 5-6 ratios. Seri angka sepanjang label. ATURAN UNIT & PERIODE (WAJIB): Dokumen adalah LAPORAN TAHUNAN yang memuat Ikhtisar Data Keuangan multi-tahun (umumnya 5 tahun) dan laporan keuangan komparatif; gabungan beberapa laporan tahunan menutupi rentang tahun yang lebih panjang. Bangun seri untuk SELURUH tahun yang tersedia lintas SEMUA dokumen — JANGAN batasi hanya ke tahun terbaru (komparatif sering mundur hingga 2019). Bila satu tahun muncul di lebih dari satu laporan, pakai angka dari laporan yang paling andal/terbaru untuk tahun tersebut. (1) "revenueLabels" adalah tahun buku yang BENAR-BENAR ADA di dokumen, urut menaik; elemen TERAKHIR = tahun buku TERBARU yang tersedia. (2) "revenueSeries" dalam TRILIUN Rupiah, selaras urutan label. (3) kpis[0] Revenue = tahun buku terbaru, unit "T", nilainya = titik terakhir revenueSeries (Triliun). (4) kpis[2] Net Profit & kpis[3] Free Cash Flow = tahun buku terbaru, unit "M" (Miliar). (5) Semua indikator KPI mencerminkan DATA TERBARU dari dokumen, bukan estimasi generik. (6) Field kartu KPI WAJIB RINGKAS: "value" hanya angka (mis. "Rp 747"), "delta" persen singkat (mis. "+2,6%"), "hint" tag pendek maksimal 8 karakter (mis. "YoY" atau "vs 2023") — JANGAN memasukkan kalimat atau penjelasan panjang ke field kartu; narasi mendalam hanya di "review". EKSTRAKSI SERI MULTI-TAHUN (WAJIB) untuk "financials": "labels" SAMA dengan revenueLabels. Semua "lines" dalam MILIAR Rupiah (mis. 5017 = Rp 5,017 triliun), selaras urutan labels; pakai null bila suatu tahun tak tersedia. "bars" dalam satuan alami: semua "%" KECUALI "dte" (Debt to Equity) yang dalam kali (angka desimal, mis. 0.84). "capex" = belanja modal/pembelian aset tetap per tahun (Miliar, angka POSITIF) untuk menghitung Free Cash Flow = kas_operasi − capex. Sertakan "ebitda" = laba usaha + depresiasi & amortisasi (Miliar). Ekstrak "lines" dari Laporan Posisi Keuangan (neraca), Laporan Laba Rugi, dan Laporan Arus Kas; jangan mengarang — null bila benar-benar tak ada di dokumen. Keluarkan HANYA JSON, pastikan lengkap dan tertutup.\n${schema}`;
     const raw = await callClaude({ system: sys, messages: [{ role: "user", content: user }], max_tokens: 30000 });
     return extractJSON(raw);
   }
@@ -220,7 +256,7 @@
     const sys = "Anda adalah Analis Keuangan senior setara analis kredit/ekuitas kelas dunia yang menulis memo investasi institusional yang tajam, thesis-driven, dan berbasis bukti. Prioritaskan materialitas dan penalaran sebab-akibat (mengapa angka bergerak), bukan deskripsi. JANGAN PERNAH mengarang angka — gunakan hanya yang ada di dokumen; bila tak tersedia, nyatakan eksplisit. Bersikap KRITIS, SKEPTIS, dan OBYEKTIF layaknya analis forensik: tantang narasi manajemen, bedakan pertumbuhan organik dari yang bersifat one-off/kebijakan, dan nyatakan terus terang bila data mengkhawatirkan (mengutamakan kejujuran diagnostik di atas optimisme target). Keluarkan HANYA JSON valid (tanpa markdown, tanpa teks lain) sesuai skema. Narasi Bahasa Indonesia formal, desimal koma.";
     const schema = `{"review":[{"h":"1. Ikhtisar Kinerja & Konteks","b":"..."},{"h":"2. Pendapatan & Struktur Segmen","b":"..."},{"h":"3. Profitabilitas & Kualitas Laba","b":"..."},{"h":"4. Likuiditas & Solvabilitas","b":"..."},{"h":"5. Arus Kas & Belanja Modal","b":"..."},{"h":"6. Struktur Permodalan & Leverage","b":"..."},{"h":"7. Risiko & Sensitivitas","b":"..."},{"h":"8. Kesimpulan Analis","b":"..."}]}`;
     const user = `Perusahaan: ${company || "-"}\nPERIODE FOKUS: ${periodLabel || "-"}\n\nDOKUMEN:\n${(contextText || "").slice(0, 260000)}\n\nTulis ULASAN KEUANGAN MENDALAM setingkat memo analis kredit/ekuitas institusional untuk PERIODE FOKUS di atas — bukan ringkasan, bukan deskripsi. Standar WAJIB tiap seksi (2-4 paragraf padat): (a) THESIS-DRIVEN — mulai dari temuan paling material, nyatakan penilaian lalu buktikan dengan angka; (b) ANGKA SPESIFIK dari dokumen (nominal & rasio) dengan YoY/CAGR, disertai DEKOMPOSISI DRIVER — jelaskan MENGAPA angka bergerak (volume vs harga, segmen, struktur biaya, pos one-off), bukan sekadar naik/turun; (c) KUALITAS LABA — pisahkan laba operasi inti dari pos non-operasional/one-off, nilai konversi laba ke kas; (d) ARUS KAS & CAPEX — FCF, konversi kas, kebutuhan modal kerja, intensitas belanja modal; (e) SOLVABILITAS & LEVERAGE — lintasan utang, interest coverage, headroom kovenan; (f) KONTEKS STRATEGIS — kaitkan dengan transformasi/restrukturisasi/segmen bisnis bila disebut di dokumen; (g) RISIKO & SENSITIVITAS ke depan — apa yang bisa membatalkan tesis, sensitivitas terhadap suku bunga/permintaan/biaya; (h) IMPLIKASI KEPUTUSAN — tutup tiap seksi dengan “so what” bagi investor/kreditur. FORMAT KETERBACAAN (WAJIB): tulis body tiap seksi sebagai BEBERAPA paragraf pendek yang dipisah SATU BARIS KOSONG antar-paragraf — satu paragraf = satu poin analitis (maks 3-4 kalimat). Paragraf TERAKHIR tiap seksi diawali persis "Implikasi strategis:". Jangan menulis satu blok teks panjang. KETAJAMAN KRITIS (WAJIB, obyektif & forensik): tantang narasi manajemen; bedakan pendapatan organik dari yang bersifat one-off/kebijakan pemerintah; nilai KUALITAS LABA (divergensi net income vs EBITDA/arus kas, gap akrual) dan sebut bila rendah; ukur KONSENTRASI/ketergantungan pelanggan (mis. dominasi pendapatan pemerintah) sebagai risiko; identifikasi aset tersembunyi/undermonetized; kuantifikasi GAP terhadap target dengan CAGR yang diperlukan dan beri penilaian probabilitas pencapaian; bingkai risiko likuiditas/solvabilitas/kovenan secara eksistensial dengan rentang waktu; rekomendasikan tindakan forensik bila divergensi mencurigakan. Bila target tidak realistis atau angka mencurigakan, NYATAKAN dengan bukti — jangan memakai bahasa menenangkan yang tidak didukung data. Seksi Kesimpulan memberi verdict analis beserta syarat/kondisi. Bila suatu data tidak ada di dokumen, nyatakan eksplisit dan JANGAN mengarang. Keluarkan HANYA JSON sesuai skema, lengkap dan tertutup.\n${schema}`;
-    const raw = await callClaude({ system: sys, messages: [{ role: "user", content: user }], max_tokens: 22000 });
+    const raw = await callClaude({ system: sys, messages: [{ role: "user", content: user }], max_tokens: 28000 });
     const obj = extractJSON(raw);
     return obj.review || obj;
   }
@@ -231,14 +267,14 @@
     const schema = `{
  "score":number(0-100, makin tinggi makin berisiko),
  "level":"low|moderate|high|critical",
+ "flags":[{"title":"...","level":"low|moderate|high|critical","area":"mis. Piutang","modus":"istilah modus fraud (mis. Fictitious revenue)","modusDetail":"2-3 kalimat KEMUNGKINAN MODUS/skema yang dapat menyebabkan indikasi ini terjadi","detail":"2-3 kalimat menjelaskan temuan secara utuh","evidence":"bukti spesifik dari dokumen dengan angka/rasio/tren yang memicu kecurigaan","implication":"konsekuensi bila dibiarkan (dampak finansial, hukum/OJK, reputasi)","action":"call-to-action tindak lanjut forensik yang KONKRET & tegas (langkah, dokumen yang diminta, pihak yang diperiksa)","impact":1-5,"likelihood":1-5}],
  "mscore":{"year":"<tahun terakhir>","value":number,"verdict":"Terindikasi manipulasi|Zona abu-abu|Bersih","interpretation":"2-3 kalimat interpretasi hasil untuk tahun terakhir","formula":"M = -4,84 + 0,92·DSRI + 0,528·GMI + 0,404·AQI + 0,892·SGI + 0,115·DEPI - 0,172·SGAI + 4,679·TATA - 0,327·LVGI ; ambang: M > -1,78 => indikasi manipulasi laba, M < -2,22 => bersih","components":[{"k":"DSRI","label":"Days Sales in Receivables Index","value":number,"note":"1 kalimat"},{"k":"GMI","label":"Gross Margin Index","value":number,"note":"..."},{"k":"AQI","label":"Asset Quality Index","value":number,"note":"..."},{"k":"SGI","label":"Sales Growth Index","value":number,"note":"..."},{"k":"DEPI","label":"Depreciation Index","value":number,"note":"..."},{"k":"SGAI","label":"SG&A Index","value":number,"note":"..."},{"k":"TATA","label":"Total Accruals to Total Assets","value":number,"note":"..."},{"k":"LVGI","label":"Leverage Index","value":number,"note":"..."}]},
  "fscore":{"year":"<tahun terakhir>","value":integer(0-9),"verdict":"Kuat|Sedang|Lemah","interpretation":"2-3 kalimat interpretasi hasil","formula":"Jumlah 9 kriteria biner (0/1). Profitabilitas(4): ROA>0, CFO>0, ΔROA>0, CFO>Laba Bersih. Leverage/Likuiditas(3): leverage jangka panjang turun, Current Ratio naik, tanpa penerbitan saham baru. Efisiensi(2): Gross Margin naik, Asset Turnover naik.","components":[{"k":"ROA positif","point":0,"note":"..."},{"k":"CFO positif","point":0,"note":"..."},{"k":"ROA meningkat (YoY)","point":0,"note":"..."},{"k":"CFO > Laba Bersih (kualitas akrual)","point":0,"note":"..."},{"k":"Leverage jangka panjang turun","point":0,"note":"..."},{"k":"Current Ratio naik","point":0,"note":"..."},{"k":"Tanpa penerbitan saham baru","point":0,"note":"..."},{"k":"Gross Margin naik","point":0,"note":"..."},{"k":"Asset Turnover naik","point":0,"note":"..."}]},
- "flags":[{"title":"...","level":"low|moderate|high|critical","area":"mis. Piutang","modus":"istilah modus fraud (mis. Fictitious revenue)","detail":"2-3 kalimat menjelaskan temuan secara utuh","evidence":"bukti spesifik dari dokumen dengan angka/rasio/tren yang memicu kecurigaan","implication":"konsekuensi bila dibiarkan (dampak finansial, hukum/OJK, reputasi)","action":"call-to-action tindak lanjut forensik yang KONKRET & tegas (langkah, dokumen yang diminta, pihak yang diperiksa)","impact":1-5,"likelihood":1-5}],
  "summary":"2-3 kalimat ringkasan postur risiko/fraud & temuan paling material",
  "recommendation":"1-2 kalimat rekomendasi tindak lanjut forensik"
 }`;
-    const user = `Perusahaan: ${company || "-"}\n\nDOKUMEN:\n${(contextText || "").slice(0, 260000)}\n\nHasilkan JSON sesuai skema. Isi 5-7 flags dengan tingkat bervariasi. Isi "summary" (2-3 kalimat ikhtisar). Untuk TIAP flag, field detail/evidence/implication/action harus tebal, konkret, dan menggugah tindakan (hindari kalimat umum). Pastikan impact & likelihood tiap flag konsisten dengan level-nya. HITUNG dua skor forensik dari laporan keuangan di dokumen untuk TAHUN TERAKHIR: (a) BENEISH M-SCORE — 8 komponen (DSRI, GMI, AQI, SGI, DEPI, SGAI, TATA, LVGI) membandingkan tahun terakhir vs tahun sebelumnya; (b) PIOTROSKI F-SCORE — 9 kriteria biner. Isi tiap komponen dengan nilai numerik + catatan singkat, tentukan verdict, dan tulis interpretasi hasil. Bila suatu komponen tak dapat dihitung karena data kurang, beri estimasi wajar dan sebutkan keterbatasannya di "note". Keluarkan HANYA JSON, pastikan lengkap dan tertutup.\n${schema}`;
-    const raw = await callClaude({ system: sys, messages: [{ role: "user", content: user }], max_tokens: 16000 });
+    const user = `Perusahaan: ${company || "-"}\n\nDOKUMEN:\n${(contextText || "").slice(0, 260000)}\n\nHasilkan JSON sesuai skema. Isi 5-7 flags dengan tingkat bervariasi. Untuk tiap flag, "modusDetail" menjelaskan KEMUNGKINAN MODUS/skema (bagaimana kecurangan/kelemahan itu bisa terjadi secara operasional). Isi "summary" (2-3 kalimat ikhtisar). Untuk TIAP flag, field detail/evidence/implication/action harus tebal, konkret, dan menggugah tindakan (hindari kalimat umum). Pastikan impact & likelihood tiap flag konsisten dengan level-nya. HITUNG dua skor forensik dari laporan keuangan di dokumen untuk TAHUN TERAKHIR: (a) BENEISH M-SCORE — 8 komponen (DSRI, GMI, AQI, SGI, DEPI, SGAI, TATA, LVGI) membandingkan tahun terakhir vs tahun sebelumnya; (b) PIOTROSKI F-SCORE — 9 kriteria biner. Isi tiap komponen dengan nilai numerik + catatan singkat, tentukan verdict, dan tulis interpretasi hasil. Bila suatu komponen tak dapat dihitung karena data kurang, beri estimasi wajar dan sebutkan keterbatasannya di "note". Keluarkan HANYA JSON, pastikan lengkap dan tertutup.\n${schema}`;
+    const raw = await callClaude({ system: sys, messages: [{ role: "user", content: user }], max_tokens: 22000 });
     return extractJSON(raw);
   }
 
@@ -248,17 +284,18 @@
     const yNow = new Date().getFullYear();
     const schema = `{
  "horizon":"${yNow} \u2013 ${yNow + 4}",
- "ambition":"tema/tujuan besar transformasi dalam SATU frasa SINGKAT (maks ~12 kata), tanpa deretan angka; detail metrik taruh di context/targets",
- "context":"2-3 kalimat: outlook makro & industri, posisi kompetitif, dan isu inti yang harus dijawab (mengacu temuan Keuangan & Risiko)",
+ "ambition":"headline transformasi: SATU kalimat KUAT, MEYAKINKAN, mudah dikomunikasikan & memorable (maks ~14 kata); HINDARI bahasa normatif/klise dan deretan angka",
+ "context":"sub-headline: MAKS 2 kalimat RINGKAS & TAJAM (jangan padat/panjang) — intisari peluang, tekanan kompetitif, dan isu inti yang harus dijawab",
  "pillars":[{"name":"nama pilar","icon":"lucide: gauge|cpu|leaf|trending-up|users|globe|shield|rocket|scale|coins","target":"target terukur mis. -320 bps COGS"}] (tepat 4 pilar),
  "quickWins":[{"title":"inisiatif quick-win","theme":"Keuangan|Operasional|Komersial|Human Capital|Hukum & Tata Kelola|Teknologi|ESG","impact":"dampak ringkas terukur","timeframe":"0-12 bulan"}] (3-5),
  "phases":[{"year":"${yNow}","title":"tema fase","kpi":"KPI utama fase","invest":"nilai investasi mis. Rp 180 M","initiatives":[{"name":"inisiatif unggulan","theme":"Keuangan|Operasional|Komersial|Human Capital|Hukum & Tata Kelola|Teknologi|ESG","desc":"1-2 kalimat apa & mengapa","impact_quant":"dampak kuantitatif finansial mis. +Rp X / -Y bps / +Z%","impact_other":"dampak non-finansial mis. NPS/waktu proses/emisi"}]}] (tepat 5 fase, tahun ${yNow}..${yNow + 4}, tiap fase 2-4 inisiatif),
  "targets":[{"year":"${yNow}","target":"sasaran utama tahun ini (1 kalimat terukur)"}] (tepat 5 tahun ${yNow}..${yNow + 4}),
- "scorecard":[{"perspective":"Keuangan|Pelanggan|Proses Internal|Pembelajaran & Pertumbuhan","kpi":"nama KPI ringkas","unit":"% | Rp M | x | hari | indeks","values":[number,number,number,number,number]}] (TOTAL MAKSIMUM 10 KPI tersebar di 4 perspektif; tiap KPI 5 nilai target ${yNow}..${yNow + 4}),
- "projection":{"labels":["${yNow}","${yNow + 1}","${yNow + 2}","${yNow + 3}","${yNow + 4}"],"pnl":[{"item":"Pendapatan","values":[num,num,num,num,num]},{"item":"Beban Usaha","values":[...]},{"item":"Laba Usaha","values":[...]},{"item":"Laba Bersih","values":[...]}],"balance":[{"item":"Total Aset","values":[...]},{"item":"Total Liabilitas","values":[...]},{"item":"Total Ekuitas","values":[...]}],"revenueBreakdown":[{"segment":"nama jenis usaha","values":[...]}]},
+ "scorecard":[{"perspective":"Keuangan|Pelanggan|Proses Internal|Pembelajaran & Pertumbuhan","kpi":"nama KPI ringkas","unit":"% | Rp M | x | hari | indeks","values":[number,number,number,number,number]}] (TOTAL MAKSIMUM 20 KPI, MAKS 5 KPI per perspektif, tersebar di 4 perspektif; tiap KPI 5 nilai target ${yNow}..${yNow + 4}),
+ "projection":{"labels":["${yNow}","${yNow + 1}","${yNow + 2}","${yNow + 3}","${yNow + 4}"],"pnl":[{"item":"Pendapatan","values":[num,num,num,num,num],"cagr":number(% CAGR 5-tahun)},{"item":"Beban Usaha","values":[...]},{"item":"Laba Usaha","values":[...]},{"item":"Laba Bersih","values":[...]}],"balance":[{"item":"Total Aset","values":[...],"cagr":number},{"item":"Total Liabilitas","values":[...]},{"item":"Total Ekuitas","values":[...]}],"revenueBreakdown":[{"segment":"nama jenis usaha","values":[...],"cagr":number}]},
+ "innovation":{"intro":"1-2 kalimat pengantar arah inovasi & terobosan","ideas":[{"title":"nama inovasi/terobosan","benchmark":"perusahaan acuan yang sukses (domestik/mancanegara) + apa yang mereka lakukan","fit":"penyesuaian dengan kondisi & kompetensi perusahaan","impact":"potensi dampak kinerja","risk":"risiko utama & mitigasi"}] (4-6 ide)},
  "review":[{"h":"1. Outlook Makro & Industri","b":"..."},{"h":"2. Peta Persaingan & Benchmark","b":"..."},{"h":"3. Diagnosis Isu Inti (Keuangan & Risiko)","b":"..."},{"h":"4. Tesis & Arsitektur Transformasi","b":"..."},{"h":"5. Quick Wins (0-12 bulan)","b":"..."},{"h":"6. Inisiatif Jangka Menengah & Panjang","b":"..."},{"h":"7. Dampak Finansial & Penciptaan Nilai","b":"..."},{"h":"8. Tata Kelola Eksekusi & Risiko Pelaksanaan","b":"..."}]
 }`;
-    const user = `Perusahaan: ${company || "-"}\n\n${priorFindings ? "TEMUAN AGEN LAIN (rencana ini WAJIB menjawabnya):\n" + priorFindings + "\n\n" : ""}DOKUMEN:\n${(contextText || "").slice(0, 200000)}\n\nSusun RENCANA TRANSFORMASI 5 TAHUN setingkat partner McKinsey/BCG/Bain. WAJIB: (1) Rencana SECARA EKSPLISIT menjawab isu temuan analisis Keuangan & Risiko di atas (bila tersedia). (2) Sertakan QUICK WINS (0-12 bulan) di samping inisiatif jangka menengah (1-3 th) & panjang (3-5 th). (3) Tiap fase tahunan merinci INISIATIF UNGGULAN beserta DAMPAK KUANTITATIF finansial (angka/%/bps) DAN dampak metrik lainnya. (4) Inisiatif menyentuh berbagai TEMA relevan: Human Capital, Hukum & Tata Kelola, Teknologi, ESG, Operasional, Komersial, Keuangan. (5) Analisis mempertimbangkan PETA PERSAINGAN, OUTLOOK MAKRO & INDUSTRI, dan BENCHMARK sejawat. (6) Isi "targets": sasaran utama TIAP TAHUN. (7) Rancang "scorecard" BALANCED SCORECARD: MAKSIMUM 10 KPI total tersebar di 4 perspektif (Keuangan, Pelanggan, Proses Internal, Pembelajaran & Pertumbuhan), tiap KPI punya target per tahun (5 nilai numerik). (9) "ambition" HARUS SINGKAT — tema/tujuan besar saja (maks ~12 kata), BUKAN kalimat panjang berisi banyak angka; detail metrik letakkan di "context"/"targets". (10) Seluruh rencana FOKUS pada CORE BUSINESS perusahaan & penguatan kompetensi inti; hindari diversifikasi ke usaha yang jauh dari kompetensi inti. (8) Susun "projection" PROYEKSI KEUANGAN 5 TAHUN dalam MILIAR Rupiah yang MENCERMINKAN dampak rencana transformasi: Laba Rugi (Pendapatan, Beban Usaha, Laba Usaha, Laba Bersih), Neraca (Total Aset, Total Liabilitas, Total Ekuitas), dan rincian Pendapatan per jenis usaha ("revenueBreakdown", jumlahnya = Pendapatan). Proyeksi adalah estimasi berbasis tahun terakhir di dokumen + asumsi transformasi (bukan angka aktual dokumen). Untuk "review": tiap seksi thesis-driven, beberapa paragraf pendek dipisah satu baris kosong, paragraf terakhir diawali "Implikasi strategis:". Berbasis bukti; jangan mengarang angka dokumen (asumsi pasar tandai sebagai estimasi). Keluarkan HANYA JSON, lengkap dan tertutup.\n${schema}`;
+    const user = `Perusahaan: ${company || "-"}\n\n${priorFindings ? "TEMUAN AGEN LAIN (rencana ini WAJIB menjawabnya):\n" + priorFindings + "\n\n" : ""}DOKUMEN:\n${(contextText || "").slice(0, 200000)}\n\nSusun RENCANA TRANSFORMASI 5 TAHUN setingkat partner McKinsey/BCG/Bain. WAJIB: (1) Rencana SECARA EKSPLISIT menjawab isu temuan analisis Keuangan & Risiko di atas (bila tersedia). (2) Sertakan QUICK WINS (0-12 bulan) di samping inisiatif jangka menengah (1-3 th) & panjang (3-5 th). (3) Tiap fase tahunan merinci INISIATIF UNGGULAN beserta DAMPAK KUANTITATIF finansial (angka/%/bps) DAN dampak metrik lainnya. (4) Inisiatif menyentuh berbagai TEMA relevan: Human Capital, Hukum & Tata Kelola, Teknologi, ESG, Operasional, Komersial, Keuangan. (5) Analisis mempertimbangkan PETA PERSAINGAN, OUTLOOK MAKRO & INDUSTRI, dan BENCHMARK sejawat. (6) Isi "targets": sasaran utama TIAP TAHUN. (7) Rancang "scorecard" BALANCED SCORECARD: MAKSIMUM 20 KPI total (MAKS 5 per perspektif) tersebar di 4 perspektif (Keuangan, Pelanggan, Proses Internal, Pembelajaran & Pertumbuhan), tiap KPI punya target per tahun (5 nilai numerik). (9) "ambition" = headline KUAT, MEYAKINKAN, mudah dikomunikasikan, memorable, TIDAK normatif/klise (maks ~14 kata, tanpa deretan angka); "context" = sub-headline MAKS 2 kalimat ringkas & tajam (jangan padat/panjang). Detail metrik letakkan di "targets". (10a) Isi "innovation": kajian INOVASI & TEROBOSAN untuk meningkatkan kinerja — belajar dari BENCHMARK perusahaan sukses (domestik & mancanegara), sesuaikan dengan kondisi/kompetensi perusahaan, dan ulas DAMPAK serta RISIKO tiap ide (4-6 ide). (10) Seluruh rencana FOKUS pada CORE BUSINESS perusahaan & penguatan kompetensi inti; hindari diversifikasi ke usaha yang jauh dari kompetensi inti. (8) Susun "projection" PROYEKSI KEUANGAN 5 TAHUN dalam MILIAR Rupiah yang MENCERMINKAN dampak rencana transformasi: Laba Rugi (Pendapatan, Beban Usaha, Laba Usaha, Laba Bersih), Neraca (Total Aset, Total Liabilitas, Total Ekuitas), dan rincian Pendapatan per jenis usaha ("revenueBreakdown", jumlahnya = Pendapatan). Tiap baris proyeksi sertakan "cagr" (CAGR 5-tahun dalam %). Proyeksi adalah estimasi berbasis tahun terakhir di dokumen + asumsi transformasi (bukan angka aktual dokumen). Untuk "review": tiap seksi thesis-driven, beberapa paragraf pendek dipisah satu baris kosong, paragraf terakhir diawali "Implikasi strategis:". Berbasis bukti; jangan mengarang angka dokumen (asumsi pasar tandai sebagai estimasi). Keluarkan HANYA JSON, lengkap dan tertutup.\n${schema}`;
     const raw = await callClaude({ system: sys, messages: [{ role: "user", content: user }], max_tokens: 32000 });
     return extractJSON(raw);
   }
@@ -302,5 +339,5 @@
     }).join("\n\n");
   }
 
-  window.STX_AI = { getKey, setKey, getModel, setModel, hasKey, parseFile, buildContext, chat, analyzeFinance, analyzeFinanceReview, analyzeRisk, analyzeTransform, analyzePrimer };
+  window.STX_AI = { PROVIDERS, getProvider, setProvider, getKeyFor, setKeyFor, getModelFor, setModelFor, getKey, setKey, getModel, setModel, hasKey, parseFile, buildContext, chat, analyzeFinance, analyzeFinanceReview, analyzeRisk, analyzeTransform, analyzePrimer };
 })();

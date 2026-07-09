@@ -218,7 +218,7 @@ function CompanyMark({ initials, color, size = 40, radius = 10 }) {
 }
 
 /* ---------- App shell ---------- */
-function AppShell({ active, onNav, openCases = [], activeCaseId, dirtyIds = {}, jobs = {}, onSelectCase, onCloseCase, theme, onToggleTheme, children, title, subtitle, actions, onBack, user }) {
+function AppShell({ active, onNav, openCases = [], activeCaseId, dirtyIds = {}, jobs = {}, onSelectCase, onCloseCase, theme, onToggleTheme, children, title, subtitle, actions, onBack, user, onOpenAccount }) {
   const nav = [
     { id: "library", label: "Pustaka Case", icon: "folders" },
     { id: "workspace", label: "Ruang Kerja", icon: "layout-panel-left", disabled: !activeCaseId },
@@ -306,13 +306,17 @@ function AppShell({ active, onNav, openCases = [], activeCaseId, dirtyIds = {}, 
         </div>
         {/* Footer */}
         <div style={{ padding: 12, borderTop: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 999, background: "var(--grad-navy)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{(((user && user.name) || "P").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("") || "P").toUpperCase()}</div>
+          <button onClick={onOpenAccount} title="Pengaturan Akun" style={{ display: "flex", alignItems: "center", gap: 9, background: "transparent", border: "none", cursor: "pointer", padding: 4, borderRadius: 8, minWidth: 0, textAlign: "left" }}>
+            {user && user.avatar ? (
+              <div style={{ width: 30, height: 30, borderRadius: 999, overflow: "hidden", flexShrink: 0, border: "1px solid var(--border)" }}><img src={user.avatar} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
+            ) : (
+              <div style={{ width: 30, height: 30, borderRadius: 999, background: "var(--grad-navy)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{(((user && user.name) || "P").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("") || "P").toUpperCase()}</div>
+            )}
             <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.3, minWidth: 0 }}>
               <div style={{ fontWeight: 600, color: "var(--text-body)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120 }}>{(user && user.name) || "Pengguna"}</div>
               <div style={{ fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120 }}>{(user && user.email) || "STRATIX"}</div>
             </div>
-          </div>
+          </button>
           <Tooltip label={theme === "dark" ? "Mode terang" : "Mode gelap"} placement="top">
             <IconButton aria-label="tema" variant="ghost" onClick={onToggleTheme}><Icon n={theme === "dark" ? "sun" : "moon"} s={17} /></IconButton>
           </Tooltip>
@@ -382,7 +386,7 @@ function BarChart({ series, labels, height = 150, color = "var(--navy-700)" }) {
 const LINE_METRICS = [
   ["pendapatan", "Pendapatan", "Rp M"], ["laba_kotor", "Laba Kotor", "Rp M"],
   ["beban_usaha", "Total Beban Usaha", "Rp M"], ["laba_usaha", "Laba Usaha", "Rp M"],
-  ["laba_bersih", "Laba Tahun Berjalan", "Rp M"], ["total_aset", "Total Aset", "Rp M"],
+  ["laba_bersih", "Laba Tahun Berjalan", "Rp M"], ["ebitda", "EBITDA", "Rp M"], ["total_aset", "Total Aset", "Rp M"],
   ["aset_lancar", "Aset Lancar", "Rp M"], ["aset_tidak_lancar", "Aset Tidak Lancar", "Rp M"],
   ["total_liabilitas", "Total Liabilitas", "Rp M"], ["liabilitas_pendek", "Liabilitas Jangka Pendek", "Rp M"],
   ["liabilitas_panjang", "Liabilitas Jangka Panjang", "Rp M"], ["kas_operasi", "Kas Bersih Operasi", "Rp M"],
@@ -440,7 +444,7 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
   const sL = scaleOf(dual ? A.v : (B ? A.v.concat(B.v) : A.v));
   const sR = dual ? scaleOf(B.v) : sL;
 
-  const W = 640, H = height, padL = 14, padR = 14, padT = 30, padB = 34;
+  const W = 640, H = height, padL = mode === "bar" ? 26 : 14, padR = mode === "bar" ? 26 : 14, padT = 30, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB, n = yrs.length;
   const xAt = (i) => padL + (n <= 1 ? plotW / 2 : (i * plotW) / (n - 1));
   const yOf = (v, s) => padT + plotH - ((v - s.min) / (s.max - s.min)) * plotH;
@@ -459,7 +463,8 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
     return d.trim();
   }
   const barGroupW = plotW / Math.max(n, 1);
-  const barW = Math.min(46, barGroupW * (B ? 0.42 : 0.66));
+  const barW = Math.min(B ? 40 : 46, barGroupW * (B ? 0.4 : 0.66));
+  const bx = (i) => padL + barGroupW * (i + 0.5);
 
   return (
     <div>
@@ -475,14 +480,14 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: "visible" }}>
           {gridY.map((gy, i) => <line key={i} x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="var(--data-grid)" strokeWidth="1" />)}
-          {yrs.map((yr, i) => <text key={yr} x={xAt(i)} y={H - 10} textAnchor="middle" fontSize="15" fontWeight="600" fill="var(--text-muted)">{yr}</text>)}
+          {yrs.map((yr, i) => <text key={yr} x={mode === "bar" ? bx(i) : xAt(i)} y={H - 10} textAnchor="middle" fontSize="15" fontWeight="600" fill="var(--text-muted)">{yr}</text>)}
 
           {mode === "bar" ? (
             <g>
-              {A.v.map((v, i) => v == null ? null : <rect key={"a" + i} x={xAt(i) - (B ? barW + 2 : barW / 2)} y={Math.min(yOf(v, sL), yOf(0, sL))} width={barW} height={Math.abs(yOf(v, sL) - yOf(0, sL))} rx="3" fill={i === n - 1 && !B ? "var(--grad-blade, var(--teal-500))" : A.color} />)}
-              {A.v.map((v, i) => v == null ? null : <text key={"at" + i} x={xAt(i) - (B ? barW / 2 + 1 : 0)} y={v >= 0 ? yOf(v, sL) - 7 : yOf(v, sL) + 16} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
-              {B ? B.v.map((v, i) => v == null ? null : <rect key={"b" + i} x={xAt(i) + 2} y={Math.min(yOf(v, sR), yOf(0, sR))} width={barW} height={Math.abs(yOf(v, sR) - yOf(0, sR))} rx="3" fill={B.color} />) : null}
-              {B ? B.v.map((v, i) => v == null ? null : <text key={"bt" + i} x={xAt(i) + barW / 2 + 2} y={v >= 0 ? yOf(v, sR) - 7 : yOf(v, sR) + 16} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
+              {A.v.map((v, i) => v == null ? null : <rect key={"a" + i} x={bx(i) - (B ? barW + 2 : barW / 2)} y={Math.min(yOf(v, sL), yOf(0, sL))} width={barW} height={Math.abs(yOf(v, sL) - yOf(0, sL))} rx="3" fill={i === n - 1 && !B ? "var(--grad-blade, var(--teal-500))" : A.color} />)}
+              {A.v.map((v, i) => v == null ? null : <text key={"at" + i} x={bx(i) - (B ? barW / 2 + 1 : 0)} y={v >= 0 ? yOf(v, sL) - 7 : yOf(v, sL) + 16} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
+              {B ? B.v.map((v, i) => v == null ? null : <rect key={"b" + i} x={bx(i) + 2} y={Math.min(yOf(v, sR), yOf(0, sR))} width={barW} height={Math.abs(yOf(v, sR) - yOf(0, sR))} rx="3" fill={B.color} />) : null}
+              {B ? B.v.map((v, i) => v == null ? null : <text key={"bt" + i} x={bx(i) + barW / 2 + 2} y={v >= 0 ? yOf(v, sR) - 7 : yOf(v, sR) + 16} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
             </g>
           ) : (
             <g>
@@ -902,6 +907,23 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
       force();
     }
     setParsing(false); mark();
+    // Auto-perbarui Data Primer dari dokumen terkini (best-effort, senyap)
+    if (AI.hasKey()) {
+      try {
+        const ctx = AI.buildContext(caseCtx.docText);
+        const pr = await AI.analyzePrimer({ company: caseCtx.company, contextText: ctx, website: caseCtx.website });
+        if (pr) {
+          caseCtx.founded = pr.founded || caseCtx.founded;
+          caseCtx.sector = pr.sector || caseCtx.sector;
+          caseCtx.bidang = pr.bidang || caseCtx.bidang;
+          caseCtx.revenue = pr.revenue || caseCtx.revenue;
+          caseCtx.revenueDate = pr.revenueDate || caseCtx.revenueDate;
+          caseCtx.status = pr.status || caseCtx.status;
+          caseCtx.primerUpdatedAt = new Date().toLocaleString("id-ID");
+          mark(); force();
+        }
+      } catch (e) { /* diam: auto-update opsional */ }
+    }
   };
   const removeDoc = (i) => { caseCtx.docText.splice(i, 1); mark(); force(); };
   const logoRef = React.useRef(null);
@@ -1152,18 +1174,26 @@ Object.assign(window, { CaseWorkspace });
 const AgNS = window.STRATIXDesignSystem_72cbdd;
 
 /* Shared result toolbar */
-function ResultToolbar({ version = "v3", when = "Hari ini, 14:20", onExport }) {
-  const { Button, Badge, Tabs } = AgNS;
+function ResultToolbar({ version = "v3", when, onExport, onRerun, rerunning, extraActions }) {
+  const { Button, Badge } = AgNS;
+  const [hist, setHist] = React.useState(false);
+  const stamp = when || "Belum ada info waktu";
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12, position: "relative" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Badge tone="neutral"><span style={{ fontFamily: "var(--font-mono)" }}>{version}</span></Badge>
-        <span style={{ fontSize: 12, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="clock" s={13} /> {when}</span>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon n="clock" s={13} /> {stamp}</span>
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <Button variant="secondary" size="sm" iconLeft={<Icon n="history" s={14} />}>Riwayat</Button>
-        <Button variant="secondary" size="sm" iconLeft={<Icon n="refresh-cw" s={14} />}>Analisis ulang</Button>
-        <Button variant="primary" size="sm" iconLeft={<Icon n="download" s={14} />} onClick={onExport}>Ekspor PDF</Button>
+      <div style={{ display: "flex", gap: 8, position: "relative" }}>
+        <Button variant="secondary" size="sm" iconLeft={<Icon n="history" s={14} />} onClick={() => setHist(!hist)}>Riwayat</Button>
+        {hist ? <div style={{ position: "absolute", top: 40, right: onExport ? 176 : 92, zIndex: 20, width: 280, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-lg)", padding: 14 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-strong)", marginBottom: 8 }}>Riwayat Analisis</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "var(--text-body)", lineHeight: 1.5 }}><Icon n="check-circle" s={14} style={{ color: "var(--positive-500)", marginTop: 1, flexShrink: 0 }} /><div>Analisis terakhir dijalankan {when ? "pada " + when : "(waktu tidak tercatat)"}. Versi hasil: <b>{version}</b>.</div></div>
+          <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10, lineHeight: 1.5 }}>Hasil disimpan otomatis di perangkat. Untuk memperbarui, gunakan "Analisis ulang".</div>
+        </div> : null}
+        <Button variant="secondary" size="sm" loading={rerunning} iconLeft={rerunning ? null : <Icon n="refresh-cw" s={14} />} onClick={onRerun}>{rerunning ? "Menganalisis…" : "Analisis ulang"}</Button>
+        {extraActions}
+        {onExport ? <Button variant="primary" size="sm" iconLeft={<Icon n="download" s={14} />} onClick={onExport}>Ekspor PDF</Button> : null}
       </div>
     </div>
   );
@@ -1188,6 +1218,92 @@ function ChatDock({ children }) {
       {React.cloneElement(children, { onCollapse: () => setOpen(false) })}
     </div>
   );
+}
+
+function exportTransformDeck(caseObj) {
+  const d = (caseObj && caseObj.analysis && caseObj.analysis.transform) || null;
+  if (!d) { alert("Jalankan Agen Transformasi terlebih dahulu sebelum mengekspor Pitch Deck."); return; }
+  const choice = window.prompt("Ekspor Pitch Deck Transformasi sebagai:\n\nKetik  PPT  untuk file PowerPoint (.pptx)\nKetik  PDF  untuk file PDF", "PPT");
+  if (!choice) return;
+  const c = choice.trim().toLowerCase();
+  if (c.startsWith("ppt")) return exportDeckPPTX(caseObj, d);
+  return exportDeckPDF(caseObj, d);
+}
+function loadScriptOnce(src) {
+  return new Promise((res, rej) => {
+    if (window.__stxLoaded && window.__stxLoaded[src]) return res();
+    const el = document.createElement("script"); el.src = src;
+    el.onload = () => { window.__stxLoaded = window.__stxLoaded || {}; window.__stxLoaded[src] = true; res(); };
+    el.onerror = () => rej(new Error("Gagal memuat pustaka: " + src));
+    document.head.appendChild(el);
+  });
+}
+async function exportDeckPPTX(caseObj, d) {
+  try {
+    await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js");
+    const P = window.PptxGenJS; const pptx = new P();
+    pptx.layout = "LAYOUT_WIDE";
+    const NAVY = "0E2547", TEAL = "12A3B4", GREY = "6B7C8E", INK = "22303F";
+    const company = caseObj.company || caseObj.name || "Perusahaan";
+    const title = (t, sub) => { const sl = pptx.addSlide(); sl.background = { color: "FFFFFF" };
+      sl.addText(t, { x: 0.6, y: 0.4, w: 12, h: 0.7, fontSize: 24, bold: true, color: NAVY, fontFace: "Arial" });
+      if (sub) sl.addText(sub, { x: 0.6, y: 1.05, w: 12, h: 0.4, fontSize: 13, color: TEAL, fontFace: "Arial" });
+      sl.addShape(pptx.ShapeType.line, { x: 0.6, y: 1.5, w: 12.1, h: 0, line: { color: "E1E7EE", width: 1 } });
+      return sl; };
+    // Cover
+    const cov = pptx.addSlide(); cov.background = { color: NAVY };
+    cov.addText("RENCANA TRANSFORMASI 5 TAHUN", { x: 0.7, y: 2.1, w: 11, h: 0.5, fontSize: 14, color: "6BD8E4", bold: true, charSpacing: 2 });
+    cov.addText(d.ambition || company, { x: 0.7, y: 2.6, w: 11.6, h: 1.6, fontSize: 30, bold: true, color: "FFFFFF" });
+    cov.addText(company + "  ·  Horizon " + (d.horizon || "") + "  ·  STRATIX", { x: 0.7, y: 4.3, w: 11, h: 0.4, fontSize: 13, color: "AFC0D4" });
+    // Context / diagnosis
+    if (d.context) { const s1 = title("Konteks & Tesis Strategis", "Outlook, posisi kompetitif, isu inti"); s1.addText(d.context, { x: 0.6, y: 1.8, w: 12.1, h: 3, fontSize: 15, color: INK, lineSpacingMultiple: 1.3 }); }
+    // Pillars
+    if (Array.isArray(d.pillars) && d.pillars.length) { const s2 = title("Pilar Transformasi", "");
+      d.pillars.forEach((p, i) => { const x = 0.6 + (i % 4) * 3.05;
+        s2.addShape(pptx.ShapeType.roundRect, { x, y: 1.9, w: 2.85, h: 2.2, fill: { color: "F4F7FA" }, line: { color: "E1E7EE" }, rectRadius: 0.1 });
+        s2.addText(p.name || "", { x: x + 0.15, y: 2.1, w: 2.55, h: 0.7, fontSize: 14, bold: true, color: NAVY });
+        s2.addText(p.target || "", { x: x + 0.15, y: 2.9, w: 2.55, h: 1, fontSize: 12, color: TEAL }); }); }
+    // Targets per year
+    if (Array.isArray(d.targets) && d.targets.length) { const s3 = title("Sasaran Utama per Tahun", "");
+      const rows = [[{ text: "Tahun", options: { bold: true, color: "FFFFFF", fill: NAVY } }, { text: "Sasaran", options: { bold: true, color: "FFFFFF", fill: NAVY } }]];
+      d.targets.forEach((t) => rows.push([{ text: String(t.year || ""), options: { bold: true, color: TEAL } }, { text: String(t.target || "") }]));
+      s3.addTable(rows, { x: 0.6, y: 1.8, w: 12.1, fontSize: 12, color: INK, border: { type: "solid", color: "E1E7EE", pt: 1 }, colW: [1.6, 10.5] }); }
+    // Roadmap
+    if (Array.isArray(d.phases) && d.phases.length) { const s4 = title("Roadmap Fase Transformasi", "");
+      let yy = 1.75; d.phases.forEach((ph) => {
+        s4.addText((ph.year || "") + "  —  " + (ph.title || ""), { x: 0.6, y: yy, w: 12, h: 0.35, fontSize: 13, bold: true, color: NAVY });
+        const inits = (ph.initiatives || []).map((it) => "• " + (it.name || "") + (it.impact_quant ? "  (" + it.impact_quant + ")" : "")).join("\n") || (ph.items || []).map((x) => "• " + x).join("\n");
+        s4.addText(inits, { x: 0.85, y: yy + 0.32, w: 11.8, h: 0.7, fontSize: 11, color: INK, lineSpacingMultiple: 1.1 }); yy += 1.05; }); }
+    // Financial projection (P&L)
+    if (d.projection && Array.isArray(d.projection.pnl)) { const s5 = title("Proyeksi Keuangan — Laba Rugi", "Rp Miliar");
+      const lbl = d.projection.labels || [];
+      const head = [{ text: "Item", options: { bold: true, color: "FFFFFF", fill: NAVY } }].concat(lbl.map((y) => ({ text: String(y), options: { bold: true, color: "FFFFFF", fill: NAVY, align: "right" } }))).concat([{ text: "CAGR", options: { bold: true, color: "FFFFFF", fill: TEAL, align: "right" } }]);
+      const rows = [head];
+      d.projection.pnl.forEach((r) => rows.push([{ text: r.item || "" }].concat((r.values || []).map((v) => ({ text: (v == null ? "—" : Math.round(v).toLocaleString("id-ID")), options: { align: "right" } }))).concat([{ text: (r.cagr != null ? Number(r.cagr).toFixed(1).replace(".", ",") + "%" : "—"), options: { align: "right", color: TEAL } }])));
+      s5.addTable(rows, { x: 0.6, y: 1.8, w: 12.1, fontSize: 11, color: INK, border: { type: "solid", color: "E1E7EE", pt: 1 } }); }
+    // Innovation
+    if (d.innovation && Array.isArray(d.innovation.ideas)) { const s6 = title("Inovasi & Terobosan", "Benchmark, dampak, risiko");
+      const rows = [[{ text: "Inovasi", options: { bold: true, color: "FFFFFF", fill: NAVY } }, { text: "Benchmark", options: { bold: true, color: "FFFFFF", fill: NAVY } }, { text: "Dampak", options: { bold: true, color: "FFFFFF", fill: NAVY } }, { text: "Risiko", options: { bold: true, color: "FFFFFF", fill: NAVY } }]];
+      d.innovation.ideas.forEach((it) => rows.push([{ text: it.title || "" }, { text: it.benchmark || "" }, { text: it.impact || "" }, { text: it.risk || "" }]));
+      s6.addTable(rows, { x: 0.6, y: 1.8, w: 12.1, fontSize: 10, color: INK, border: { type: "solid", color: "E1E7EE", pt: 1 }, colW: [2.6, 4, 2.9, 2.6] }); }
+    await pptx.writeFile({ fileName: "STRATIX-Pitch-Deck-" + (caseObj.id || "transformasi") + ".pptx" });
+  } catch (e) { alert("Gagal membuat PPTX: " + (e && e.message || e) + "\n\nCoba lagi atau gunakan opsi PDF."); }
+}
+function exportDeckPDF(caseObj, d) {
+  const esc = stxEscape; const company = esc(caseObj.company || caseObj.name || "Perusahaan");
+  const slide = (inner, cover) => `<section style="page-break-after:always;min-height:640px;padding:${cover ? "0" : "44px 54px"};${cover ? "background:#0E2547;color:#fff;display:flex;flex-direction:column;justify-content:center;padding:60px;" : "background:#fff;"}">${inner}</section>`;
+  const H = (t, sub) => `<div style="border-bottom:2px solid #E1E7EE;padding-bottom:10px;margin-bottom:20px;"><div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#12A3B4;">${esc(sub || "STRATIX")}</div><div style="font-size:24px;font-weight:800;color:#0E2547;margin-top:4px;">${esc(t)}</div></div>`;
+  let html = "";
+  html += slide(`<div style="font-size:13px;font-weight:700;letter-spacing:.14em;color:#6BD8E4;">RENCANA TRANSFORMASI 5 TAHUN</div><div style="font-size:34px;font-weight:800;margin-top:16px;line-height:1.25;">${esc(d.ambition || company)}</div><div style="font-size:14px;color:#AFC0D4;margin-top:24px;">${company} · Horizon ${esc(d.horizon || "")} · STRATIX</div>`, true);
+  if (d.context) html += slide(H("Konteks & Tesis Strategis", "Diagnosis") + `<div style="font-size:16px;line-height:1.7;color:#22303F;">${esc(d.context)}</div>`);
+  if (Array.isArray(d.pillars)) html += slide(H("Pilar Transformasi") + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">${d.pillars.map((p) => `<div style="border:1px solid #E1E7EE;border-radius:10px;padding:16px;"><div style="font-size:16px;font-weight:700;color:#0E2547;">${esc(p.name || "")}</div><div style="font-size:14px;color:#12A3B4;margin-top:6px;font-weight:600;">${esc(p.target || "")}</div></div>`).join("")}</div>`);
+  if (Array.isArray(d.targets)) html += slide(H("Sasaran Utama per Tahun") + `<table style="width:100%;border-collapse:collapse;font-size:14px;">${d.targets.map((t) => `<tr><td style="padding:9px 12px;border-bottom:1px solid #eee;font-weight:700;color:#12A3B4;width:90px;">${esc(String(t.year || ""))}</td><td style="padding:9px 12px;border-bottom:1px solid #eee;color:#22303F;">${esc(String(t.target || ""))}</td></tr>`).join("")}</table>`);
+  if (Array.isArray(d.phases)) html += slide(H("Roadmap Fase Transformasi") + d.phases.map((ph) => `<div style="margin-bottom:14px;"><div style="font-size:15px;font-weight:700;color:#0E2547;">${esc(ph.year || "")} — ${esc(ph.title || "")}</div><div style="font-size:12.5px;color:#22303F;margin-top:4px;line-height:1.5;">${(ph.initiatives || []).map((it) => "• " + esc(it.name || "") + (it.impact_quant ? " (" + esc(it.impact_quant) + ")" : "")).join("<br>") || (ph.items || []).map((x) => "• " + esc(x)).join("<br>")}</div></div>`).join(""));
+  if (d.projection && d.projection.pnl) { const lbl = d.projection.labels || []; html += slide(H("Proyeksi Keuangan — Laba Rugi", "Rp Miliar") + `<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="background:#0E2547;color:#fff;"><th style="text-align:left;padding:8px;">Item</th>${lbl.map((y) => `<th style="text-align:right;padding:8px;">${esc(String(y))}</th>`).join("")}<th style="text-align:right;padding:8px;color:#6BD8E4;">CAGR</th></tr>${d.projection.pnl.map((r) => `<tr><td style="padding:8px;border-bottom:1px solid #eee;">${esc(r.item || "")}</td>${(r.values || []).map((v) => `<td style="text-align:right;padding:8px;border-bottom:1px solid #eee;font-family:monospace;">${v == null ? "—" : Math.round(v).toLocaleString("id-ID")}</td>`).join("")}<td style="text-align:right;padding:8px;border-bottom:1px solid #eee;font-family:monospace;color:#12A3B4;font-weight:700;">${r.cagr != null ? Number(r.cagr).toFixed(1).replace(".", ",") + "%" : "—"}</td></tr>`).join("")}</table>`); }
+  if (d.innovation && d.innovation.ideas) html += slide(H("Inovasi & Terobosan", "Benchmark · Dampak · Risiko") + d.innovation.ideas.map((it) => `<div style="border:1px solid #E1E7EE;border-radius:10px;padding:14px;margin-bottom:10px;"><div style="font-size:15px;font-weight:700;color:#0E2547;">${esc(it.title || "")}</div><div style="font-size:12.5px;color:#22303F;margin-top:5px;line-height:1.5;"><b>Benchmark:</b> ${esc(it.benchmark || "-")}<br><b style="color:#1a8f5a;">Dampak:</b> ${esc(it.impact || "-")}<br><b style="color:#c0392b;">Risiko:</b> ${esc(it.risk || "-")}</div></div>`).join(""));
+  const ov = document.createElement("div"); ov.id = "stx-print-deck";
+  ov.innerHTML = `<style>@media print{body>*:not(#stx-print-deck){display:none!important;}#stx-print-deck{display:block!important;}@page{size:landscape;}}#stx-print-deck{position:fixed;inset:0;background:#fff;z-index:99999;overflow:auto;font-family:'Plus Jakarta Sans',Arial,sans-serif;}</style>${html}`;
+  document.body.appendChild(ov); window.print(); setTimeout(() => ov.remove(), 600);
 }
 
 function printFinanceReport(p) {
@@ -1248,7 +1364,7 @@ function printFinanceReport(p) {
 }
 
 /* ---------- Agen Analis Keuangan ---------- */
-function AgentFinance({ d, caseCtx, onGenerateReview }) {
+function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyzedAt }) {
   const { Card, CardHeader, StatCard, DataTable, Badge, Alert, Tabs, Select, Button } = AgNS;
   const [tab, setTab] = React.useState("ringkasan");
   React.useEffect(refreshIcons);
@@ -1330,7 +1446,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
-      <ResultToolbar version="v3" onExport={onExportPDF} />
+      <ResultToolbar version="v3" onExport={onExportPDF} onRerun={onRerun} rerunning={rerunning} when={analyzedAt} />
       <div style={{ marginBottom: 22 }}>
         <Tabs value={tab} onChange={setTab} items={[
           { value: "ringkasan", label: "Ringkasan", icon: <Icon n="layout-dashboard" s={15} /> },
@@ -1412,6 +1528,16 @@ function AgentFinance({ d, caseCtx, onGenerateReview }) {
                   <Donut value={d.healthScore != null ? d.healthScore : 78} label="/100" color={/kritis/i.test(d.healthLabel || "") ? "var(--negative-500)" : /waspada/i.test(d.healthLabel || "") ? "var(--warning-500)" : "var(--positive-500)"} size={104} />
                   <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.55 }}>
                     Peringkat <strong style={{ color: "var(--text-strong)" }}>{d.healthLabel || "Sehat"}</strong>. {d.verdict}
+                  </div>
+                </div>
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ position: "relative", height: 8, borderRadius: 999, background: "linear-gradient(90deg, var(--negative-500) 0%, var(--negative-500) 40%, var(--warning-500) 40%, var(--warning-500) 70%, var(--positive-500) 70%, var(--positive-500) 100%)" }}>
+                    <div style={{ position: "absolute", top: -4, left: `${Math.max(0, Math.min(100, d.healthScore != null ? d.healthScore : 78))}%`, transform: "translateX(-50%)", width: 3, height: 16, background: "var(--text-strong)", borderRadius: 2, boxShadow: "0 0 0 2px var(--surface)" }} />
+                  </div>
+                  <div style={{ display: "flex", marginTop: 6, fontSize: 10.5, fontWeight: 600 }}>
+                    <span style={{ width: "40%", textAlign: "center", color: "var(--negative-600)" }}>Kritis (0–40)</span>
+                    <span style={{ width: "30%", textAlign: "center", color: "var(--warning-600)" }}>Waspada (40–70)</span>
+                    <span style={{ width: "30%", textAlign: "center", color: "var(--positive-600)" }}>Sehat (70–100)</span>
                   </div>
                 </div>
               </Card>
@@ -1599,7 +1725,7 @@ function ScoreBlock({ kind, s }) {
   );
 }
 
-function AgentRisk({ d, caseCtx }) {
+function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt }) {
   const { Card, CardHeader, Badge, Alert, RiskBadge, RiskCell } = AgNS;
   React.useEffect(refreshIcons);
   const company = (caseCtx && caseCtx.company) || "Perusahaan";
@@ -1621,7 +1747,7 @@ function AgentRisk({ d, caseCtx }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
-      <ResultToolbar version="v2" />
+      <ResultToolbar version="v2" onRerun={onRerun} rerunning={rerunning} when={analyzedAt} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.1fr)", gap: 16, marginBottom: 20 }}>
         <Card>
           <CardHeader title="Indeks Risiko Fraud" subtitle="Komposit dari 4 dimensi temuan" action={<RiskBadge level={d.level} />} />
@@ -1675,6 +1801,7 @@ function AgentRisk({ d, caseCtx }) {
                   <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>Dampak {f.impact || "—"} × Kmk {f.likelihood || "—"}</span>
                 </div>
                 <p style={{ fontSize: 13.5, color: "var(--text-body)", marginTop: 8, lineHeight: 1.6 }}>{f.detail}</p>
+                {f.modusDetail && (<div style={{ marginTop: 8, fontSize: 13, color: "var(--text-body)", lineHeight: 1.55 }}><span style={{ fontWeight: 700, color: `var(--risk-${f.level})` }}>Kemungkinan modus: </span>{f.modusDetail}</div>)}
                 {f.evidence && (
                   <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--bg-subtle)", borderRadius: "var(--radius-md)", borderLeft: "2px solid var(--border-strong)" }}>
                     <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-faint)", fontWeight: 700, marginBottom: 3 }}>Bukti dari dokumen</div>
@@ -1706,8 +1833,8 @@ function AgentRisk({ d, caseCtx }) {
 }
 
 /* ---------- Agen Transformasi ---------- */
-function AgentTransform({ d, caseCtx }) {
-  const { Card, Badge, Alert, Tabs } = AgNS;
+function AgentTransform({ d, caseCtx, onRerun, rerunning, analyzedAt, onExportDeck }) {
+  const { Card, Badge, Alert, Tabs, Button } = AgNS;
   const [ttab, setTtab] = React.useState("ringkasan");
   React.useEffect(refreshIcons);
   const company = (caseCtx && caseCtx.company) || "Perusahaan";
@@ -1715,6 +1842,12 @@ function AgentTransform({ d, caseCtx }) {
   const persColors = { "Keuangan": "var(--accent)", "Pelanggan": "#3B82F6", "Proses Internal": "#8B5CF6", "Pembelajaran & Pertumbuhan": "#16A34A" };
   const proj = d.projection || null;
   const yearsHead = (proj && proj.labels) ? proj.labels : (d.targets || []).map((t) => t.year);
+  const cagrOf = (vals) => {
+    const v = (vals || []).filter((x) => x != null && !isNaN(x));
+    if (v.length < 2 || v[0] <= 0) return "—";
+    const c = (Math.pow(v[v.length - 1] / v[0], 1 / (v.length - 1)) - 1) * 100;
+    return (c >= 0 ? "+" : "") + c.toFixed(1).replace(".", ",") + "%";
+  };
   const projTable = (title, rows, labels) => (
     <Card padding="none" style={{ marginBottom: 16 }}>
       <div style={{ padding: "14px 16px 8px" }}><div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)" }}>{title}</div><div style={{ fontSize: 11, color: "var(--text-faint)" }}>Rp Miliar</div></div>
@@ -1723,12 +1856,14 @@ function AgentTransform({ d, caseCtx }) {
           <thead><tr style={{ background: "var(--bg-subtle)" }}>
             <th style={{ textAlign: "left", padding: "8px 14px", color: "var(--text-muted)", fontWeight: 600 }}>Item</th>
             {labels.map((y) => <th key={y} style={{ textAlign: "right", padding: "8px 14px", color: "var(--text-muted)", fontWeight: 600, fontFamily: "var(--font-mono)" }}>{y}</th>)}
+            <th style={{ textAlign: "right", padding: "8px 14px", color: "var(--accent-hover)", fontWeight: 700, fontFamily: "var(--font-mono)", borderLeft: "1px solid var(--border-subtle)" }}>CAGR</th>
           </tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={i} style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 <td style={{ padding: "8px 14px", color: "var(--text-body)", fontWeight: 600 }}>{r.item || r.segment}</td>
                 {(r.values || []).map((v, k) => <td key={k} style={{ padding: "8px 14px", textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text-strong)" }}>{rpM(v)}</td>)}
+                <td style={{ padding: "8px 14px", textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--accent-hover)", borderLeft: "1px solid var(--border-subtle)" }}>{cagrOf(r.values)}</td>
               </tr>
             ))}
           </tbody>
@@ -1739,13 +1874,14 @@ function AgentTransform({ d, caseCtx }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
-      <ResultToolbar version="v1" />
+      <ResultToolbar version="v1" onRerun={onRerun} rerunning={rerunning} when={analyzedAt} extraActions={<Button variant="secondary" size="sm" iconLeft={<Icon n="presentation" s={14} />} onClick={onExportDeck}>Pitch Deck</Button>} />
       <div style={{ marginBottom: 18 }}>
         <Tabs value={ttab} onChange={setTtab} items={[
           { value: "ringkasan", label: "Ringkasan", icon: <Icon n="rocket" s={15} /> },
           { value: "roadmap", label: "Roadmap", icon: <Icon n="map" s={15} /> },
           { value: "kpi", label: "Balanced Scorecard", icon: <Icon n="target" s={15} /> },
           { value: "proyeksi", label: "Proyeksi Keuangan", icon: <Icon n="line-chart" s={15} /> },
+          { value: "inovasi", label: "Inovasi & Terobosan", icon: <Icon n="lightbulb" s={15} /> },
         ]} />
       </div>
 
@@ -1917,6 +2053,33 @@ function AgentTransform({ d, caseCtx }) {
           ) : <Card padding="lg"><div style={{ fontSize: 13, color: "var(--text-muted)" }}>Proyeksi keuangan belum tersedia — jalankan Analisis ulang.</div></Card>}
         </div>
       )}
+
+      {ttab === "inovasi" && (
+        <div>
+          <SectionTitle eyebrow="Inovasi" title="Kajian Inovasi & Terobosan" />
+          {d.innovation && Array.isArray(d.innovation.ideas) && d.innovation.ideas.length ? (
+            <React.Fragment>
+              {d.innovation.intro ? <div style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.7, marginBottom: 16 }}>{d.innovation.intro}</div> : null}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {d.innovation.ideas.map((idea, i) => (
+                  <Card key={i} padding="lg">
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-quiet)", color: "var(--accent-hover)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13 }}>{i + 1}</div>
+                      <div style={{ fontSize: 15.5, fontWeight: 700, color: "var(--text-strong)" }}>{idea.title}</div>
+                    </div>
+                    {idea.benchmark ? <div style={{ marginBottom: 8 }}><span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-hover)", display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="award" s={13} />Benchmark</span><div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.6, marginTop: 3 }}>{idea.benchmark}</div></div> : null}
+                    {idea.fit ? <div style={{ marginBottom: 8 }}><span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="puzzle" s={13} />Kesesuaian</span><div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.6, marginTop: 3 }}>{idea.fit}</div></div> : null}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12, marginTop: 6 }}>
+                      {idea.impact ? <div style={{ background: "var(--positive-050)", borderRadius: 8, padding: "10px 12px" }}><div style={{ fontSize: 11, fontWeight: 700, color: "var(--positive-600)", display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="trending-up" s={13} />Dampak</div><div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.55, marginTop: 3 }}>{idea.impact}</div></div> : null}
+                      {idea.risk ? <div style={{ background: "var(--negative-050)", borderRadius: 8, padding: "10px 12px" }}><div style={{ fontSize: 11, fontWeight: 700, color: "var(--negative-600)", display: "inline-flex", alignItems: "center", gap: 5 }}><Icon n="alert-triangle" s={13} />Risiko</div><div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.55, marginTop: 3 }}>{idea.risk}</div></div> : null}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </React.Fragment>
+          ) : <Card padding="lg"><div style={{ fontSize: 13, color: "var(--text-muted)" }}>Kajian inovasi belum tersedia — jalankan Analisis ulang pada Agen Transformasi (versi terbaru).</div></Card>}
+        </div>
+      )}
       </div>
       <ChatDock>
         <ChatPanel caseId={caseCtx && caseCtx.id} caseName={company} agentKey="transform" agentLabel="Agen Transformasi" period={d.horizon || "5 tahun"} contextText={caseCtx && window.STX_AI.buildContext(caseCtx.docText, 160000)} />
@@ -2085,16 +2248,43 @@ window.ChatPanel = ChatPanel;
 /* global React, Icon, refreshIcons, SectionTitle */
 const SetNS = window.STRATIXDesignSystem_72cbdd;
 
+// --- 8 flat Indonesian-fruit avatars (inline SVG data-URIs) ---
+function svgAvatar(bg, inner) {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='${bg}'/>${inner}</svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
+const FRUIT_AVATARS = [
+  { id: "salak", name: "Salak", uri: svgAvatar("#F2E9DE", "<ellipse cx='50' cy='54' rx='24' ry='30' fill='#7B3F1D'/><path d='M50 24 l4 8 -4 4 -4-4z' fill='#3E7B2E'/><g fill='#5A2E14'><path d='M34 40 q16 6 32 0'/><path d='M32 52 q18 7 36 0'/><path d='M34 64 q16 6 32 0'/></g><g stroke='#4A2410' stroke-width='1.2'><path d='M50 30 V82'/><path d='M40 34 Q46 58 44 80'/><path d='M60 34 Q54 58 56 80'/></g>" ) },
+  { id: "duku", name: "Duku", uri: svgAvatar("#EAF3E7", "<g fill='#E7C873'><circle cx='38' cy='44' r='16'/><circle cx='62' cy='44' r='16'/><circle cx='50' cy='64' r='16'/></g><g fill='#C9A94B'><circle cx='38' cy='44' r='16' fill-opacity='0'/></g><g fill='#8a6d2e'><circle cx='34' cy='40' r='2'/><circle cx='58' cy='40' r='2'/><circle cx='46' cy='60' r='2'/></g>" ) },
+  { id: "rambutan", name: "Rambutan", uri: svgAvatar("#FBE6E6", "<circle cx='50' cy='54' r='24' fill='#D22B2B'/><g stroke='#3E7B2E' stroke-width='3' stroke-linecap='round'><path d='M50 30 l-6-10'/><path d='M62 34 l8-8'/><path d='M38 34 l-8-8'/><path d='M74 50 l12-2'/><path d='M26 50 l-12-2'/><path d='M70 68 l10 8'/><path d='M30 68 l-10 8'/><path d='M50 80 l0 12'/></g>" ) },
+  { id: "pisang", name: "Pisang", uri: svgAvatar("#FFF6D6", "<path d='M26 34 q-6 34 24 46 q30 8 26-8 q-6 10-26 2 Q30 64 40 34 q-8-4-14 0z' fill='#F4C430'/><path d='M26 34 q-6 34 24 46 q30 8 26-8 q-10 6-26-2 Q34 62 42 36 q-9-5-16-2z' fill='#E3A81E'/>" ) },
+  { id: "mangga", name: "Mangga", uri: svgAvatar("#FFF1D9", "<path d='M50 26 C30 26 24 46 30 62 C36 80 64 80 70 62 C76 46 70 26 50 26z' fill='#F6A81C'/><path d='M50 26 C40 26 34 34 32 46 C42 40 52 40 60 46 C58 34 52 26 50 26z' fill='#E8C33A'/><path d='M50 22 l6 6 -6 3 -5-3z' fill='#3E7B2E'/>" ) },
+  { id: "manggis", name: "Manggis", uri: svgAvatar("#EDE6F2", "<circle cx='50' cy='56' r='26' fill='#5B2A57'/><circle cx='50' cy='56' r='26' fill='#3D1A3B' fill-opacity='.4'/><g fill='#3E7B2E'><path d='M50 30 l-7-8 h14z'/><circle cx='50' cy='30' r='7'/></g><g fill='#C98B2E'><circle cx='44' cy='60' r='2'/><circle cx='52' cy='58' r='2'/><circle cx='56' cy='64' r='2'/><circle cx='46' cy='66' r='2'/></g>" ) },
+  { id: "durian", name: "Durian", uri: svgAvatar("#EAF6D9", "<circle cx='50' cy='56' r='25' fill='#7C9A3B'/><g fill='#5F7A28'><path d='M50 31 l4 8-4 3-4-3z'/><path d='M64 38 l7 5-5 5-4-6z'/><path d='M36 38 l-7 5 5 5 4-6z'/><path d='M76 55 l9 2-5 6-6-4z'/><path d='M24 55 l-9 2 5 6 6-4z'/><path d='M60 74 l6 7-8 2-2-7z'/><path d='M40 74 l-6 7 8 2 2-7z'/><path d='M50 80 l4 8h-8z'/><path d='M50 55 l4 8-4 3-4-3z'/></g>" ) },
+  { id: "kelapa", name: "Kelapa", uri: svgAvatar("#E6F0F2", "<circle cx='50' cy='56' r='26' fill='#8B5A2B'/><circle cx='50' cy='56' r='26' fill='#6E4420' fill-opacity='.3'/><g fill='#2F1C0E'><circle cx='42' cy='50' r='4'/><circle cx='58' cy='50' r='4'/><circle cx='50' cy='62' r='4'/></g><path d='M50 30 q-8-8-2-14 q4 8 2 14z' fill='#3E7B2E'/>" ) },
+];
+
 function AkunPanel({ user, onUpdateUser }) {
   const { Card, CardHeader, Input, Button, Alert } = SetNS;
   const [name, setName] = React.useState((user && user.name) || "");
+  const [avatar, setAvatar] = React.useState((user && user.avatar) || null);
   const [saved, setSaved] = React.useState(false);
   const [err, setErr] = React.useState("");
+  const upRef = React.useRef(null);
   React.useEffect(refreshIcons);
-  const save = () => {
+  const persist = (patch) => {
     setErr("");
-    try { const next = window.STX_AUTH.updateProfile({ name }); if (onUpdateUser) onUpdateUser(next); setSaved(true); setTimeout(() => setSaved(false), 1600); }
-    catch (e) { setErr((e && e.message) || String(e)); }
+    try { const next = window.STX_AUTH.updateProfile(patch); if (onUpdateUser) onUpdateUser(next); return true; }
+    catch (e) { setErr((e && e.message) || String(e)); return false; }
+  };
+  const chooseAvatar = (uri) => { setAvatar(uri); persist({ name, avatar: uri }); };
+  const onUpload = (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    if (f.size > 1200000) { setErr("Ukuran gambar maksimum ~1 MB."); return; }
+    const r = new FileReader(); r.onload = () => chooseAvatar(r.result); r.readAsDataURL(f);
+  };
+  const save = () => {
+    if (persist({ name, avatar })) { setSaved(true); setTimeout(() => setSaved(false), 1600); }
   };
   const logout = () => { if (window.STX_AUTH) window.STX_AUTH.logout(); if (onUpdateUser) onUpdateUser(null); };
   return (
@@ -2103,6 +2293,26 @@ function AkunPanel({ user, onUpdateUser }) {
       <Card padding="lg">
         <CardHeader title="Identitas" subtitle="Nama tampil di aplikasi & laporan ekspor" />
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 8 }}>Avatar</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <div style={{ width: 64, height: 64, borderRadius: 999, overflow: "hidden", border: "2px solid var(--border)", flexShrink: 0, background: "var(--grad-navy)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 22 }}>
+                {avatar ? <img src={avatar} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (((name || "P").trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join("") || "P").toUpperCase())}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 44px)", gap: 8 }}>
+                {FRUIT_AVATARS.map((a) => (
+                  <button key={a.id} title={a.name} onClick={() => chooseAvatar(a.uri)} style={{ width: 44, height: 44, borderRadius: 12, padding: 0, cursor: "pointer", overflow: "hidden", background: "transparent", border: avatar === a.uri ? "2px solid var(--accent)" : "1px solid var(--border)", boxShadow: avatar === a.uri ? "var(--shadow-sm)" : "none" }}>
+                    <img src={a.uri} alt={a.name} style={{ width: "100%", height: "100%", display: "block" }} />
+                  </button>
+                ))}
+                <button title="Unggah gambar sendiri" onClick={() => upRef.current && upRef.current.click()} style={{ width: 44, height: 44, borderRadius: 12, cursor: "pointer", background: "var(--bg-subtle)", border: "1px dashed var(--border-strong)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon n="upload" s={16} />
+                </button>
+                <input ref={upRef} type="file" accept="image/*" onChange={onUpload} style={{ display: "none" }} />
+              </div>
+            </div>
+            {avatar ? <button onClick={() => chooseAvatar(null)} style={{ marginTop: 8, fontSize: 11.5, color: "var(--text-muted)", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}>Kembali ke inisial nama</button> : null}
+          </div>
           <div>
             <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Nama</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} prefix={<Icon n="user" s={15} />} placeholder="Nama Anda" />
@@ -2181,22 +2391,24 @@ function EksporPanel() {
   );
 }
 
-function Settings({ user, onUpdateUser }) {
+function Settings({ user, onUpdateUser, initialTab }) {
   const { Card, CardHeader, Input, Button, Badge, Switch, Alert, Tabs } = SetNS;
-  const [tab, setTab] = React.useState("ai");
-  const [provider, setProvider] = React.useState("anthropic");
+  const [tab, setTab] = React.useState(initialTab || "ai");
+  const AIx = window.STX_AI;
+  const [provider, setProviderS] = React.useState(() => (AIx ? AIx.getProvider() : "anthropic"));
   const [show, setShow] = React.useState(false);
-  const [apiKey, setApiKey] = React.useState(() => (window.STX_AI ? window.STX_AI.getKey() : ""));
+  const [apiKey, setApiKey] = React.useState(() => (AIx ? AIx.getKeyFor(AIx.getProvider()) : ""));
+  const [model, setModelS] = React.useState(() => (AIx ? AIx.getModelFor(AIx.getProvider()) : ""));
   const [saved, setSaved] = React.useState(false);
   const connected = !!apiKey;
-  const saveKey = () => { if (window.STX_AI) window.STX_AI.setKey(apiKey.trim()); setSaved(true); setTimeout(() => setSaved(false), 1800); };
+  const selectProvider = (id) => { setProviderS(id); if (AIx) { AIx.setProvider(id); setApiKey(AIx.getKeyFor(id)); setModelS(AIx.getModelFor(id)); } };
+  const saveKey = () => { if (AIx) { AIx.setKeyFor(provider, apiKey.trim()); AIx.setModelFor(provider, model); AIx.setProvider(provider); } setSaved(true); setTimeout(() => setSaved(false), 1800); };
   React.useEffect(refreshIcons);
 
-  const providers = [
-    { id: "anthropic", name: "Anthropic", model: "Claude Sonnet 5", icon: "sparkles", color: "#0E7C8B", note: "Direkomendasikan untuk analisis dokumen panjang." },
-    { id: "gemini", name: "Google Gemini", model: "Gemini 2.5 Pro", icon: "gem", color: "#2A578C", note: "Konteks sangat besar, multimodal." },
-    { id: "openai", name: "OpenAI", model: "GPT-4o", icon: "brain-circuit", color: "#12855A", note: "Serbaguna, cepat." },
-  ];
+  const PMETA = { anthropic: { name: "Anthropic", icon: "sparkles", note: "Direkomendasikan untuk analisis dokumen panjang.", ph: "sk-ant-api03-…" }, gemini: { name: "Google Gemini", icon: "gem", note: "Konteks sangat besar, multimodal.", ph: "AIza…" }, openai: { name: "OpenAI", icon: "brain-circuit", note: "Serbaguna, cepat.", ph: "sk-…" } };
+  const PROV = (AIx && AIx.PROVIDERS) || {};
+  const providers = Object.keys(PMETA).map((id) => ({ id, name: PMETA[id].name, model: (PROV[id] ? (PROV[id].models[0][1]) : ""), icon: PMETA[id].icon, note: PMETA[id].note }));
+  const modelOptions = (PROV[provider] ? PROV[provider].models : []);
 
   return (
     <div style={{ maxWidth: 760, margin: "0 auto" }}>
@@ -2210,7 +2422,7 @@ function Settings({ user, onUpdateUser }) {
         {providers.map((p) => {
           const on = provider === p.id;
           return (
-            <button key={p.id} onClick={() => setProvider(p.id)} style={{
+            <button key={p.id} onClick={() => selectProvider(p.id)} style={{
               textAlign: "left", padding: 16, borderRadius: "var(--radius-lg)", cursor: "pointer",
               background: on ? "var(--accent-quiet)" : "var(--surface)",
               border: on ? "1.5px solid var(--accent)" : "1px solid var(--border)",
@@ -2232,12 +2444,18 @@ function Settings({ user, onUpdateUser }) {
         <CardHeader title="API Key" subtitle={`Kunci untuk ${providers.find((p) => p.id === provider).name}`} action={<Badge tone={connected ? "positive" : "neutral"} dot>{connected ? "Terhubung" : "Belum diatur"}</Badge>} />
         <div style={{ display: "flex", gap: 10 }}>
           <div style={{ flex: 1 }}>
-            <Input type={show ? "text" : "password"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={provider === "anthropic" ? "sk-ant-api03-…" : "masukkan API key"} prefix={<Icon n="key-round" s={15} />}
+            <Input type={show ? "text" : "password"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={PMETA[provider].ph} prefix={<Icon n="key-round" s={15} />}
               suffix={<button onClick={() => setShow(!show)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 0 }}><Icon n={show ? "eye-off" : "eye"} s={16} /></button>} />
           </div>
           <Button variant="primary" iconLeft={<Icon n={saved ? "check" : "save"} s={15} />} onClick={saveKey}>{saved ? "Tersimpan" : "Simpan"}</Button>
         </div>
-        {provider !== "anthropic" && <div style={{ marginTop: 10 }}><Alert tone="warning" title="Baru Anthropic yang aktif">Integrasi fungsional saat ini untuk Anthropic Claude. Gemini & OpenAI menyusul.</Alert></div>}
+        <div style={{ marginTop: 14 }}>
+          <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Model</label>
+          <select value={model} onChange={(e) => setModelS(e.target.value)} style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-body)", padding: "0 12px", fontSize: 13.5, fontFamily: "var(--font-sans)", cursor: "pointer" }}>
+            {modelOptions.map(([mid, mlabel]) => <option key={mid} value={mid}>{mlabel}</option>)}
+          </select>
+          <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 6 }}>Model dipakai untuk semua agen. Klik <b>Simpan</b> untuk menerapkan pilihan engine & model.</div>
+        </div>
         <div style={{ marginTop: 14 }}>
           <Alert tone="info" title="Kunci disimpan di perangkat Anda">API Key hanya disimpan di browser ini (localStorage) untuk memanggil model. STRATIX tidak mengirim kunci ke server mana pun selain penyedia AI.</Alert>
         </div>
@@ -2281,6 +2499,7 @@ function App() {
   const [cases, setCases] = React.useState(D.cases);
   const [openCases, setOpenCases] = React.useState([]);
   const [activeCaseId, setActiveCaseId] = React.useState(null);
+  const [settingsTab, setSettingsTab] = React.useState("ai");
   const [dirtyIds, setDirtyIds] = React.useState({});
   const [pendingClose, setPendingClose] = React.useState(null);
   const [pendingDelete, setPendingDelete] = React.useState(null);
@@ -2326,6 +2545,7 @@ function App() {
     if (agent === "finance" && AI) {
       AI.analyzeFinance({ company: caseObj.company, contextText: ctx })
         .then((result) => {
+          result.analyzedAt = new Date().toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
           caseObj.analysis = Object.assign({}, caseObj.analysis, { finance: result });
           if (!caseObj.agents.includes("finance")) caseObj.agents.push("finance");
           markDirty(caseObj.id);
@@ -2335,6 +2555,7 @@ function App() {
     } else if (agent === "risk" && AI) {
       AI.analyzeRisk({ company: caseObj.company, contextText: ctx })
         .then((result) => {
+          result.analyzedAt = new Date().toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
           caseObj.analysis = Object.assign({}, caseObj.analysis, { risk: result });
           if (!caseObj.agents.includes("risk")) caseObj.agents.push("risk");
           markDirty(caseObj.id);
@@ -2345,6 +2566,7 @@ function App() {
       const prior = buildPriorFindings(caseObj);
       AI.analyzeTransform({ company: caseObj.company, contextText: ctx, priorFindings: prior })
         .then((result) => {
+          result.analyzedAt = new Date().toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
           caseObj.analysis = Object.assign({}, caseObj.analysis, { transform: result });
           if (!caseObj.agents.includes("transform")) caseObj.agents.push("transform");
           markDirty(caseObj.id);
@@ -2418,7 +2640,7 @@ function App() {
   if (view === "library") content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
   else if (view === "newcase") content = <NewCaseFlow nextIndex={nextIndex} onCancel={() => setView("library")} onCreate={(c) => { const next = [c, ...cases]; casesRef.current = next; setCases(next); openCase(c); persist(); }} />;
   else if (view === "workspace" && activeCase) content = <CaseWorkspace caseCtx={activeCase} docs={D.documents} agents={D.agents} dirty={!!dirtyIds[activeCaseId]} jobs={jobs} onStartJob={startJob} onClearJob={clearJob} onMarkDirty={() => markDirty(activeCaseId)} onSave={() => saveCase(activeCaseId)} onRequestClose={() => requestClose(activeCaseId)} onRunAgent={(id) => { setView("agent-" + id); }} />;
-  else if (view === "agent-finance" && activeCase) content = <AgentFinance d={(activeCase.analysis && activeCase.analysis.finance) || D.finance} caseCtx={activeCase} onGenerateReview={(periodLabel, periodKey) => {
+  else if (view === "agent-finance" && activeCase) content = <AgentFinance d={(activeCase.analysis && activeCase.analysis.finance) || D.finance} caseCtx={activeCase} onRerun={() => startJob(activeCase, "finance")} rerunning={(jobs[jobKey(activeCaseId, "finance")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.finance && activeCase.analysis.finance.analyzedAt} onGenerateReview={(periodLabel, periodKey) => {
     const AI = window.STX_AI; const cObj = activeCase;
     const ctx = window.STX_AI.buildContext(cObj.docText);
     return AI.analyzeFinanceReview({ company: cObj.company, contextText: ctx, periodLabel }).then((review) => {
@@ -2429,9 +2651,9 @@ function App() {
       return review;
     });
   }} />;
-  else if (view === "agent-risk" && activeCase) content = <AgentRisk d={(activeCase.analysis && activeCase.analysis.risk) || D.risk} caseCtx={activeCase} />;
-  else if (view === "agent-transform" && activeCase) content = <AgentTransform d={(activeCase.analysis && activeCase.analysis.transform) || D.transform} caseCtx={activeCase} />;
-  else if (view === "settings") content = <Settings user={user} onUpdateUser={setUser} />;
+  else if (view === "agent-risk" && activeCase) content = <AgentRisk d={(activeCase.analysis && activeCase.analysis.risk) || D.risk} caseCtx={activeCase} onRerun={() => startJob(activeCase, "risk")} rerunning={(jobs[jobKey(activeCaseId, "risk")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.risk && activeCase.analysis.risk.analyzedAt} />;
+  else if (view === "agent-transform" && activeCase) content = <AgentTransform d={(activeCase.analysis && activeCase.analysis.transform) || D.transform} caseCtx={activeCase} onRerun={() => startJob(activeCase, "transform")} rerunning={(jobs[jobKey(activeCaseId, "transform")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.transform && activeCase.analysis.transform.analyzedAt} onExportDeck={() => exportTransformDeck(activeCase)} />;
+  else if (view === "settings") content = <Settings user={user} onUpdateUser={setUser} initialTab={settingsTab} />;
   else content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
 
   if (!user) return <AuthScreen onAuth={setUser} />;
@@ -2443,7 +2665,7 @@ function App() {
 
   return (
     <React.Fragment>
-      <AppShell active={view} onNav={nav} user={user}
+      <AppShell active={view} onNav={nav} user={user} onOpenAccount={() => { setSettingsTab("akun"); setView("settings"); }}
         openCases={openCases} activeCaseId={activeCaseId} dirtyIds={dirtyIds} jobs={jobs}
         onSelectCase={selectCase} onCloseCase={requestClose}
         theme={theme} onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}

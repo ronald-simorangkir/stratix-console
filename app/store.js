@@ -86,9 +86,10 @@
       var sess = this.currentUser(); if (!sess) throw new Error("Belum masuk.");
       var nm = patch && patch.name != null ? String(patch.name).trim() : sess.name;
       if (!nm) throw new Error("Nama tidak boleh kosong.");
+      var av = patch && patch.avatar !== undefined ? patch.avatar : sess.avatar;
       var users = readUsers(); var u = users[sess.email];
-      if (u) { u.name = nm; users[sess.email] = u; writeUsers(users); }
-      var next = Object.assign({}, sess, { name: nm });
+      if (u) { u.name = nm; u.avatar = av; users[sess.email] = u; writeUsers(users); }
+      var next = Object.assign({}, sess, { name: nm, avatar: av });
       try { localStorage.setItem(SKEY, JSON.stringify(next)); } catch (e) {}
       return next;
     },
