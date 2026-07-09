@@ -552,6 +552,18 @@ function CaseLogo({ c, size = 40, radius = 10 }) {
 function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
   const { Card, Badge, Input, Button } = LibNS;
   const healthTone = { "Sehat": "positive", "Waspada": "warning", "Kritis": "negative" };
+  const finScore = (c) => (c.analysis && c.analysis.finance && c.analysis.finance.healthScore != null) ? c.analysis.finance.healthScore : null;
+  const rskScore = (c) => (c.analysis && c.analysis.risk && c.analysis.risk.score != null) ? c.analysis.risk.score : null;
+  const rskLevel = (c) => (c.analysis && c.analysis.risk && c.analysis.risk.level) || "";
+  const healthColor = (v) => v == null ? "var(--text-faint)" : v >= 70 ? "var(--positive-600)" : v >= 40 ? "var(--warning-600)" : "var(--negative-600)";
+  const riskColor = (v, lv) => { if (v == null) return "var(--text-faint)"; if (/critical|high/.test(lv)) return "var(--negative-600)"; if (/moderate/.test(lv)) return "var(--warning-600)"; if (/low/.test(lv)) return "var(--positive-600)"; return v >= 70 ? "var(--negative-600)" : v >= 40 ? "var(--warning-600)" : "var(--positive-600)"; };
+  const ScorePill = ({ v, color, align }) => v == null
+    ? <span style={{ color: "var(--text-faint)" }}>—</span>
+    : <span style={{ display: "inline-flex", alignItems: "center", gap: 5, justifyContent: align || "flex-end" }}>
+        <span style={{ width: 7, height: 7, borderRadius: 2, background: color, flexShrink: 0 }} />
+        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-strong)" }}>{v}</span>
+        <span style={{ fontSize: 10.5, color: "var(--text-faint)" }}>/100</span>
+      </span>;
   const [view, setView] = React.useState("table");
   const [query, setQuery] = React.useState("");
   const [filterOpen, setFilterOpen] = React.useState(false);
@@ -637,7 +649,6 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
             </React.Fragment>
           )}
         </div>
-        <Button variant="primary" iconLeft={<Icon n="plus" s={16} />} onClick={onNew}>Case Baru</Button>
       </div>
 
       {/* ---- EMPTY STATE ---- */}
@@ -656,9 +667,9 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--text-sm)" }}>
             <thead>
               <tr>
-                {["Perusahaan", "Sektor", "Status", "Revenue", "Kesehatan", "Agen", ""].map((h, i) => (
+                {["Perusahaan", "Sektor", "Status", "Revenue", "Skor Kesehatan", "Indeks Risiko", "Agen", ""].map((h, i) => (
                   <th key={i} style={{
-                    textAlign: h === "Revenue" ? "right" : "left", padding: "11px 16px", whiteSpace: "nowrap",
+                    textAlign: ["Revenue", "Skor Kesehatan", "Indeks Risiko"].includes(h) ? "right" : "left", padding: "11px 16px", whiteSpace: "nowrap",
                     fontSize: "var(--text-xs)", fontWeight: 700, letterSpacing: "var(--ls-wide)", textTransform: "uppercase",
                     color: "var(--text-muted)", background: "var(--bg-subtle)", borderBottom: "1px solid var(--border)",
                   }}>{h}</th>
@@ -667,7 +678,7 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
             </thead>
             <tbody>
               {noResults && (
-                <tr><td colSpan={7} style={{ padding: "40px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Tidak ada case yang cocok dengan pencarian atau filter.</td></tr>
+                <tr><td colSpan={8} style={{ padding: "40px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Tidak ada case yang cocok dengan pencarian atau filter.</td></tr>
               )}
               {filtered.map((c) => (
                 <tr key={c.id} onClick={() => onOpen(c)} style={{ cursor: "pointer", transition: "background var(--dur-fast) var(--ease-standard)" }}
@@ -685,7 +696,8 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
                   <td style={{ ...cell, color: "var(--text-body)" }}>{c.sector}</td>
                   <td style={cell}><Badge tone="brand" size="sm">{c.status}</Badge></td>
                   <td style={{ ...cell, textAlign: "right" }}><span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--text-strong)" }}>{c.revenue}</span></td>
-                  <td style={cell}><Badge tone={healthTone[c.health]} size="sm" dot>{c.health}</Badge></td>
+                  <td style={{ ...cell, textAlign: "right" }}><ScorePill v={finScore(c)} color={healthColor(finScore(c))} /></td>
+                  <td style={{ ...cell, textAlign: "right" }}><ScorePill v={rskScore(c)} color={riskColor(rskScore(c), rskLevel(c))} /></td>
                   <td style={cell}><AgentDots agents={c.agents} /></td>
                   <td style={{ ...cell, textAlign: "right", whiteSpace: "nowrap" }}>
                     <button onClick={(e) => { e.stopPropagation(); onDelete && onDelete(c); }} title="Hapus case" aria-label="Hapus case"
@@ -726,7 +738,6 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                   <CaseLogo c={c} size={44} radius={11} />
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <Badge tone={healthTone[c.health]} dot>{c.health}</Badge>
                     <button onClick={(e) => { e.stopPropagation(); onDelete && onDelete(c); }} title="Hapus case" aria-label="Hapus case"
                       style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", padding: 4, display: "inline-flex", borderRadius: 6 }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = "var(--negative-600)"; }}
@@ -740,6 +751,16 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
                 <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
                   <Badge tone="neutral" size="sm">{c.sector}</Badge>
                   <Badge tone="brand" size="sm">{c.status}</Badge>
+                </div>
+                <div style={{ display: "flex", gap: 20, marginTop: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-faint)", marginBottom: 3 }}>Skor Kesehatan</div>
+                    <ScorePill v={finScore(c)} color={healthColor(finScore(c))} align="flex-start" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-faint)", marginBottom: 3 }}>Indeks Risiko</div>
+                    <ScorePill v={rskScore(c)} color={riskColor(rskScore(c), rskLevel(c))} align="flex-start" />
+                  </div>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 18px", borderTop: "1px solid var(--border-subtle)", background: "var(--surface-sunken)" }}>
@@ -2259,6 +2280,7 @@ function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt, versioning }) {
   const colLabels = ["Jarang", "Kecil", "Mungkin", "Sering", "Hampir pasti"];
   const levelOrder = [["critical", "Kritis"], ["high", "Tinggi"], ["moderate", "Sedang"], ["low", "Rendah"]];
   const flags = d.flags || [];
+  const [cell, setCell] = React.useState(null);
   const counts = levelOrder.map(([lv, lbl]) => [lbl, flags.filter((f) => f.level === lv).length, lv]).filter(([, n]) => n > 0);
   // Pemetaan flag BERNOMOR ke sel matriks (impact=baris, likelihood=kolom)
   const cellNums = {};
@@ -2270,6 +2292,13 @@ function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt, versioning }) {
       (cellNums[k] = cellNums[k] || []).push(i + 1);
     }
   });
+  const shown = cell ? d.flags.map((f, i) => ({ f: f, i: i })).filter(function (o) {
+    if (!o.f.impact || !o.f.likelihood) return false;
+    const ri = 5 - Math.min(5, Math.max(1, o.f.impact));
+    const ci = Math.min(5, Math.max(1, o.f.likelihood)) - 1;
+    return (ri + "-" + ci) === cell;
+  }) : d.flags.map((f, i) => ({ f: f, i: i }));
+  const cellInfo = cell ? { imp: 5 - Number(cell.split("-")[0]), lik: Number(cell.split("-")[1]) + 1 } : null;
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 20, maxWidth: 1760, margin: "0 auto", alignItems: "flex-start" }}>
       <div style={{ flex: "1 1 680px", minWidth: 0 }}>
@@ -2301,6 +2330,48 @@ function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt, versioning }) {
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 6 }}>Rekomendasi Tindak Lanjut</div>
               <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.7, borderLeft: "3px solid var(--risk-high)", paddingLeft: 12 }}>{d.recommendation}</div>
             </div> : null}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 9 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>Matriks Risiko · Dampak × Kemungkinan</div>
+                {cell ? <button onClick={() => setCell(null)} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 11.5, fontWeight: 700, color: "var(--accent-hover)" }}>Tampilkan semua</button> : null}
+              </div>
+              <table style={{ borderCollapse: "separate", borderSpacing: 3, width: "100%", tableLayout: "fixed" }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 46 }}></th>
+                    {colLabels.map((cl, c) => (
+                      <th key={c} style={{ fontSize: 8.5, fontWeight: 700, color: "var(--text-faint)", textAlign: "center", padding: "0 0 4px", lineHeight: 1.1 }}>{cl}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rowLabels.map((rl, r) => (
+                    <tr key={r}>
+                      <td style={{ fontSize: 8.5, fontWeight: 700, color: "var(--text-faint)", textAlign: "right", paddingRight: 5, lineHeight: 1.05 }}>{rl}</td>
+                      {colLabels.map((_, c) => {
+                        const key = r + "-" + c;
+                        const n = (cellNums[key] || []).length;
+                        const imp = 5 - r, lik = c + 1, sev = imp * lik;
+                        const rgb = sev >= 15 ? "239,68,68" : sev >= 10 ? "249,115,22" : sev >= 5 ? "245,158,11" : "34,197,94";
+                        const active = cell === key;
+                        return (
+                          <td key={c} style={{ padding: 0 }}>
+                            <button disabled={n === 0} onClick={() => setCell(active ? null : key)} title={"Dampak " + imp + " × Kemungkinan " + lik + (n ? " — " + n + " temuan" : "")}
+                              style={{ width: "100%", height: 34, border: active ? "2px solid var(--text-strong)" : "1px solid rgba(" + rgb + ",0.4)", background: "rgba(" + rgb + "," + (n ? 0.92 : 0.12) + ")", borderRadius: 6, cursor: n ? "pointer" : "default", color: n ? "#fff" : "transparent", fontWeight: 800, fontSize: 13, fontFamily: "var(--font-mono)", opacity: (cell && !active && n) ? 0.45 : 1, transition: "opacity var(--dur-fast)" }}>
+                              {n || 0}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "var(--text-faint)", marginTop: 3, paddingLeft: 49 }}>
+                <span>← Kemungkinan lebih rendah</span><span>lebih tinggi →</span>
+              </div>
+              <div style={{ fontSize: 10.5, color: "var(--text-faint)", marginTop: 8, lineHeight: 1.5 }}>Angka pada tiap kotak = <b>jumlah temuan red flags</b>. Klik kotak untuk menyaring daftar temuan; klik lagi untuk melepas filter.</div>
+            </div>
           </div>
         </Card>
         <Card>
@@ -2324,9 +2395,14 @@ function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt, versioning }) {
         </Card>
       </div>
 
-      <SectionTitle eyebrow="Temuan" title="Red Flags & Indikasi Fraud" right={<Badge tone="negative" dot>{d.flags.length} temuan aktif</Badge>} />
+      <SectionTitle eyebrow="Temuan" title="Red Flags & Indikasi Fraud" right={cell ? <Badge tone="warning" dot>{shown.length} dari {d.flags.length} · terfilter</Badge> : <Badge tone="negative" dot>{d.flags.length} temuan aktif</Badge>} />
+      {cell ? <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, background: "var(--accent-quiet)", border: "1px solid var(--teal-400)", borderRadius: "var(--radius-md)", padding: "8px 12px" }}>
+        <Icon n="filter" s={14} style={{ color: "var(--accent-hover)" }} />
+        <span style={{ fontSize: 12.5, color: "var(--text-body)", flex: 1 }}>Menampilkan temuan pada kotak <b>Dampak {cellInfo.imp} × Kemungkinan {cellInfo.lik}</b>.</span>
+        <button onClick={() => setCell(null)} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--accent-hover)" }}>Tampilkan semua</button>
+      </div> : null}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-        {d.flags.map((f, i) => (
+        {shown.map(({ f, i }) => (
           <Card key={i} padding="md" style={{ borderLeft: `3px solid var(--risk-${f.level})` }}>
             <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
               <div style={{ width: 32, height: 32, borderRadius: "50%", background: `var(--risk-${f.level})`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14, fontWeight: 800 }}>{i + 1}</div>
