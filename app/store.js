@@ -40,6 +40,8 @@
   }
 
   window.STX_STORE = {
+    get: idbGet,
+    set: idbSet,
     loadCases: function () {
       return idbGet("cases").then(function (v) { return Array.isArray(v) ? v : null; }).catch(function () { return null; });
     },
