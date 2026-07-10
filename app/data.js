@@ -168,3 +168,57 @@ window.STX_DATA = {
     ],
   },
 };
+
+/* ---------- Case Demo (data ilustrasi untuk promo/onboarding) ---------- */
+(function () {
+  var D = window.STX_DATA; if (!D) return;
+  var years = ["2020", "2021", "2022", "2023", "2024"];
+  var demoFinancials = {
+    labels: years,
+    lines: {
+      pendapatan: [3600, 3900, 4000, 4290, 4820],
+      laba_kotor: [900, 980, 1032, 1120, 1292],
+      beban_usaha: [560, 600, 612, 650, 722],
+      laba_usaha: [340, 380, 420, 470, 570],
+      laba_bersih: [250, 300, 332, 386, 419],
+      ebitda: [511, 589, 672, 738, 882],
+      total_aset: [5200, 5600, 5900, 6400, 7100],
+      aset_lancar: [2100, 2250, 2400, 2600, 2900],
+      aset_tidak_lancar: [3100, 3350, 3500, 3800, 4200],
+      total_liabilitas: [2600, 2800, 3000, 3350, 3750],
+      liabilitas_pendek: [1400, 1500, 1600, 1750, 1950],
+      liabilitas_panjang: [1200, 1300, 1400, 1600, 1800],
+      kas_operasi: [420, 470, 520, 560, 610],
+      kas_investasi: [-280, -320, -360, -410, -520],
+      kas_pendanaan: [-90, -110, -130, -150, -98]
+    },
+    bars: {
+      gross_margin: [25.0, 25.1, 25.8, 26.1, 26.8],
+      ebitda_margin: [14.2, 15.1, 16.8, 17.2, 18.3],
+      net_profit_margin: [6.9, 7.7, 8.3, 9.0, 8.7],
+      roe: [11.2, 12.1, 13.0, 13.8, 14.6],
+      roa: [4.8, 5.4, 5.6, 6.0, 5.9],
+      dte: [0.98, 1.02, 1.05, 1.08, 1.12],
+      rev_growth: [null, 8.3, 2.6, 7.3, 12.4],
+      ebitda_growth: [null, 15.3, 14.1, 9.8, 19.5]
+    },
+    capex: [300, 340, 380, 430, 540],
+    ebitda: [511, 589, 672, 738, 882]
+  };
+  var demoFinance = Object.assign({}, D.finance, { healthScore: 82, healthLabel: "Sehat", financials: demoFinancials });
+  var demoRisk = Object.assign({}, D.risk, {
+    mscore: { value: -2.48, verdict: "Bersih", year: "2024" },
+    dechow: { value: 1.42, verdict: "Substansial", year: "2024" },
+    altman: { value: 2.10, verdict: "Abu-abu", year: "2024" },
+    fscore: { value: 6, verdict: "Sedang", year: "2024" }
+  });
+  D.demoCase = {
+    id: "Case-000-DEMO", seq: 0, ticker: "NSAT",
+    company: "PT Nusantara Sejahtera Tbk", initials: "NSA", logoColor: "#0E7C8B", logo: null,
+    sector: "Industri Pengolahan (Manufaktur)", bidang: "Manufaktur komponen otomotif",
+    status: "Swasta Nasional", founded: "1998", website: "", revenue: "Rp 4,82 T", revenueDate: "2024-12",
+    docText: [], updated: "contoh", updatedAt: Date.now(), agents: ["finance", "risk", "transform"],
+    analysis: { finance: demoFinance, risk: demoRisk, transform: D.transform },
+    health: "Sehat", demo: true
+  };
+})();

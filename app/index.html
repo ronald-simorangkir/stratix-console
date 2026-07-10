@@ -610,7 +610,7 @@ function caseSeq(c) { if (c && c.seq != null) return c.seq; const m = /Case-(\d+
 function caseTicker(c) { if (c && c.ticker) return String(c.ticker).toUpperCase(); const m = /Case-\d+-([A-Za-z0-9]+)/.exec((c && c.id) || ""); return m ? m[1].toUpperCase() : "XXXX"; }
 function caseIndex(c) { return "Case-" + String(caseSeq(c)).padStart(3, "0") + "-" + caseTicker(c); }
 
-function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
+function CaseLibrary({ cases, onOpen, onNew, onDelete, onLoadDemo }) {
   const { Card, Badge, Input, Button } = LibNS;
   const finScore = (c) => (c.analysis && c.analysis.finance && c.analysis.finance.healthScore != null) ? c.analysis.finance.healthScore : null;
   const rskScore = (c) => (c.analysis && c.analysis.risk && c.analysis.risk.score != null) ? c.analysis.risk.score : null;
@@ -731,6 +731,7 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
             <button key={m} onClick={() => setView(m)} title={lbl} aria-label={lbl} style={{ width: 36, height: 30, border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: view === m ? "var(--surface)" : "transparent", color: view === m ? "var(--accent-hover)" : "var(--text-muted)", boxShadow: view === m ? "var(--shadow-xs)" : "none" }}><Icon n={ic} s={16} /></button>
           ))}
         </div>
+        {onLoadDemo ? <Button variant="ghost" iconLeft={<Icon n="sparkles" s={15} />} onClick={onLoadDemo}>Case Demo</Button> : null}
         <div style={{ position: "relative" }}>
           <Button variant="secondary" iconLeft={<Icon n="sliders-horizontal" s={16} />} onClick={() => setFilterOpen((o) => !o)}>
             Filter{activeFilters > 0 ? <span style={{ marginLeft: 7, fontSize: 11, fontWeight: 700, background: "var(--accent)", color: "#fff", borderRadius: 999, padding: "1px 7px" }}>{activeFilters}</span> : null}
@@ -3542,6 +3543,13 @@ function App() {
     persist();
   };
   const selectCase = (id) => { setActiveCaseId(id); setView("workspace"); };
+  const loadDemo = () => {
+    const dc = window.STX_DATA && window.STX_DATA.demoCase; if (!dc) return;
+    const exists = (casesRef.current || []).find((c) => c.id === dc.id);
+    if (exists) { openCase(exists); return; }
+    const copy = JSON.parse(JSON.stringify(dc)); copy.updatedAt = Date.now();
+    const next = [copy, ...(casesRef.current || [])]; casesRef.current = next; setCases(next); openCase(copy); persist();
+  };
   const nav = (v) => setView(v);
   const finishTutorial = () => { try { localStorage.setItem("stx_tutorial_seen", "1"); } catch (e) {} setTutorialOpen(false); if (tutorialFresh) { setTutorialFresh(false); setSettingsTab("ai"); setView("settings"); } };
   const performLogout = () => { if (window.STX_AUTH) window.STX_AUTH.logout(); setUser(null); setView("landing"); };
@@ -3563,7 +3571,7 @@ function App() {
   else if (view === "library") { actions = <Button variant="primary" size="sm" iconLeft={<Ic n="plus" s={15} />} onClick={() => setView("newcase")}>Case Baru</Button>; }
 
   let content;
-  if (view === "library") content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
+  if (view === "library") content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} onLoadDemo={loadDemo} />;
   else if (view === "newcase") content = <NewCaseFlow nextIndex={nextIndex} onCancel={() => setView("library")} onCreate={(c) => { const next = [c, ...cases]; casesRef.current = next; setCases(next); openCase(c); persist(); }} />;
   else if (view === "workspace" && activeCase) content = <CaseWorkspace caseCtx={activeCase} docs={D.documents} agents={D.agents} dirty={!!dirtyIds[activeCaseId]} jobs={jobs} onStartJob={startJob} onClearJob={clearJob} onMarkDirty={() => markDirty(activeCaseId)} onSave={() => saveCase(activeCaseId)} onRequestClose={() => requestClose(activeCaseId)} onRunAgent={(id) => { setView("agent-" + id); }} />;
   else if (view === "agent-finance" && activeCase) content = <AgentFinance d={(activeCase.analysis && activeCase.analysis.finance) || D.finance} caseCtx={activeCase} versioning={vprops("finance")} onRerun={() => startJob(activeCase, "finance")} rerunning={(jobs[jobKey(activeCaseId, "finance")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.finance && activeCase.analysis.finance.analyzedAt} onGenerateReview={(periodLabel, periodKey) => {
@@ -3580,7 +3588,7 @@ function App() {
   else if (view === "agent-risk" && activeCase) content = <AgentRisk d={(activeCase.analysis && activeCase.analysis.risk) || D.risk} caseCtx={activeCase} versioning={vprops("risk")} onRerun={() => startJob(activeCase, "risk")} rerunning={(jobs[jobKey(activeCaseId, "risk")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.risk && activeCase.analysis.risk.analyzedAt} />;
   else if (view === "agent-transform" && activeCase) content = <AgentTransform d={(activeCase.analysis && activeCase.analysis.transform) || D.transform} caseCtx={activeCase} versioning={vprops("transform")} onRerun={() => startJob(activeCase, "transform")} rerunning={(jobs[jobKey(activeCaseId, "transform")] || {}).status === "running"} analyzedAt={activeCase.analysis && activeCase.analysis.transform && activeCase.analysis.transform.analyzedAt} />;
   else if (view === "settings") content = <Settings user={user} onUpdateUser={setUser} initialTab={settingsTab} />;
-  else content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} />;
+  else content = <CaseLibrary cases={cases} onOpen={openCase} onNew={() => setView("newcase")} onDelete={(c) => setPendingDelete(c)} onLoadDemo={loadDemo} />;
 
   if (!user) return <AuthScreen onAuth={setUser} />;
   if (view === "landing") {
