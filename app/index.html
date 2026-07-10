@@ -351,7 +351,7 @@ function LineChart({ series, labels, height = 150, color = "var(--teal-500)", fi
   const path = (arr) => arr.map((v, i) => `${i ? "L" : "M"}${x(i, arr).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
   const areaPath = `${path(series)} L${x(series.length - 1, series)},${h - pad} L${x(0, series)},${h - pad} Z`;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={height} preserveAspectRatio="none" style={{ overflow: "visible" }}>
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={height} preserveAspectRatio="none" style={{ overflow: "hidden" }}>
       <defs>
         <linearGradient id="stx-area" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.22" />
@@ -400,14 +400,16 @@ const BAR_METRICS = [
   ["bopo", "BOPO", "%"], ["rev_growth", "Net Revenue Growth", "%"],
   ["ebitda_growth", "EBITDA YoY Growth", "%"], ["np_growth", "Net Profit YoY Growth", "%"],
 ];
+function fmtID(n, dec) { return Number(n).toLocaleString("id-ID", { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
 function fmtChartNum(v, unit) {
   if (v == null || isNaN(v)) return "—";
-  if (unit === "%") return v.toFixed(1).replace(".", ",") + "%";
-  if (unit === "×") return v.toFixed(2).replace(".", ",") + "×";
-  const a = Math.abs(v);
-  if (a >= 1000) return (v / 1000).toFixed(2).replace(".", ",") + " T";
-  if (a >= 1) return Math.round(v).toLocaleString("id-ID") + " M";
-  if (a > 0) return Math.round(v * 1000).toLocaleString("id-ID") + " Jt";
+  if (unit === "%") return fmtID(v, 1) + "%";
+  if (unit === "×") return fmtID(v, 2) + "×";
+  const a = Math.abs(v); // nilai dalam Miliar
+  if (a >= 1000) return fmtID(v / 1000, 2) + " T";
+  if (a >= 1) return fmtID(v, 2) + " M";
+  if (a >= 0.001) return fmtID(v * 1000, 2) + " Jt";
+  if (a > 0) return fmtID(v * 1e6, 2) + " Rb";
   return "0";
 }
 function maxAbs(arr) { const n = arr.filter((x) => x != null && !isNaN(x)); return n.length ? Math.max(...n.map(Math.abs)) : 0; }
@@ -416,6 +418,16 @@ function scaleOf(vals) {
   let min = Math.min(0, ...n), max = Math.max(0, ...n);
   if (min === max) { max += 1; min -= 1; }
   const p = (max - min) * 0.12; return { min: min - p, max: max + p };
+}
+function barScale(vals) {
+  const n = vals.filter((x) => x != null && !isNaN(x));
+  let dMin = n.length ? Math.min(...n) : 0, dMax = n.length ? Math.max(...n) : 1;
+  let min = Math.min(0, dMin), max = Math.max(0, dMax);
+  if (min === max) max += 1;
+  const range = (max - min) || 1;
+  max += range * 0.16; // ruang label di atas
+  if (min < 0) min -= range * 0.16; // pad bawah hanya bila ada negatif → bar positif mendarat di sumbu
+  return { min: min, max: max };
 }
 
 function MetricPicker({ catalog, value, onChange, allowNone }) {
@@ -441,8 +453,9 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
   const B = b !== "none" ? { key: b, label: meta(b)[1], unit: meta(b)[2], v: vals(b), color: "var(--navy-500)" } : null;
   const hasA = A.v.some((x) => x != null);
   const dual = B && (A.unit !== B.unit || (maxAbs(A.v) && maxAbs(B.v) && (maxAbs(B.v) / maxAbs(A.v) > 8 || maxAbs(A.v) / maxAbs(B.v) > 8)));
-  const sL = scaleOf(dual ? A.v : (B ? A.v.concat(B.v) : A.v));
-  const sR = dual ? scaleOf(B.v) : sL;
+  const scaleFn = mode === "bar" ? barScale : scaleOf;
+  const sL = scaleFn(dual ? A.v : (B ? A.v.concat(B.v) : A.v));
+  const sR = dual ? scaleFn(B.v) : sL;
 
   const W = 640, H = height, padL = mode === "bar" ? 26 : 14, padR = mode === "bar" ? 26 : 14, padT = 30, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB, n = yrs.length;
@@ -454,6 +467,8 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
     if (which === "A") { if (yA == null) return 0; if (yB == null) return yA - 11; return yA <= yB ? yA - 11 : yA + 18; }
     if (yB == null) return 0; if (yA == null) return yB - 11; return yB < yA ? yB - 11 : yB + 18;
   };
+  const lblX = (i) => i === 0 ? padL : (i === n - 1 ? W - padR : xAt(i));
+  const lblAnchor = (i) => i === 0 ? "start" : (i === n - 1 ? "end" : "middle");
   const gridY = [0, 0.25, 0.5, 0.75, 1].map((g) => padT + g * plotH);
   const tickVals = (s) => [0, 0.25, 0.5, 0.75, 1].map((g) => s.max - g * (s.max - s.min));
 
@@ -480,6 +495,7 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ overflow: "visible" }}>
           {gridY.map((gy, i) => <line key={i} x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="var(--data-grid)" strokeWidth="1" />)}
+          {mode === "bar" ? <line x1={padL} x2={W - padR} y1={yOf(0, sL).toFixed(1)} y2={yOf(0, sL).toFixed(1)} stroke="var(--text-faint)" strokeWidth="1.5" opacity="0.55" /> : null}
           {yrs.map((yr, i) => <text key={yr} x={mode === "bar" ? bx(i) : xAt(i)} y={H - 10} textAnchor="middle" fontSize="15" fontWeight="600" fill="var(--text-muted)">{yr}</text>)}
 
           {mode === "bar" ? (
@@ -493,10 +509,10 @@ function MultiChart({ mode, catalog, data, labels, range, defaultKey, height = 2
             <g>
               <path d={linePath(A.v, sL)} fill="none" stroke={A.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
               {A.v.map((v, i) => v == null ? null : <circle key={"ac" + i} cx={xAt(i)} cy={yOf(v, sL)} r="3.4" fill="var(--surface)" stroke={A.color} strokeWidth="2" />)}
-              {A.v.map((v, i) => v == null ? null : <text key={"al" + i} x={xAt(i)} y={labelY(i, "A")} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
+              {A.v.map((v, i) => v == null ? null : <text key={"al" + i} x={lblX(i)} y={labelY(i, "A")} textAnchor={lblAnchor(i)} fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={A.color}>{fmtChartNum(v, A.unit)}</text>)}
               {B ? <path d={linePath(B.v, sR)} fill="none" stroke={B.color} strokeWidth="2.5" strokeDasharray="5 4" strokeLinejoin="round" /> : null}
               {B ? B.v.map((v, i) => v == null ? null : <circle key={"bc" + i} cx={xAt(i)} cy={yOf(v, sR)} r="3.4" fill="var(--surface)" stroke={B.color} strokeWidth="2" />) : null}
-              {B ? B.v.map((v, i) => v == null ? null : <text key={"bl" + i} x={xAt(i)} y={labelY(i, "B")} textAnchor="middle" fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
+              {B ? B.v.map((v, i) => v == null ? null : <text key={"bl" + i} x={lblX(i)} y={labelY(i, "B")} textAnchor={lblAnchor(i)} fontSize="13" fontWeight="700" fontFamily="var(--font-mono)" fill={B.color}>{fmtChartNum(v, B.unit)}</text>) : null}
             </g>
           )}
         </svg>
@@ -796,7 +812,7 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
     setAfErr("");
     for (const f of files) {
       const r = await AI.parseFile(f);
-      setPrimerDocs((prev) => [...prev, { name: r.name, ext: r.ext, chars: r.chars, text: r.text, docType: guessDocType(r.name, r.ext) }]);
+      setPrimerDocs((prev) => [...prev, { name: r.name, ext: r.ext, chars: r.chars, text: r.text, docType: guessDocType(r.name, r.ext), uploadedAt: Date.now() }]);
     }
     if (e.target) e.target.value = "";
   };
@@ -987,7 +1003,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
     caseCtx.docText = caseCtx.docText || [];
     for (const f of files) {
       const r = await AI.parseFile(f);
-      caseCtx.docText.push({ name: r.name, ext: r.ext, chars: r.chars, text: r.text, docType: guessDocType(r.name, r.ext) });
+      caseCtx.docText.push({ name: r.name, ext: r.ext, chars: r.chars, text: r.text, docType: guessDocType(r.name, r.ext), uploadedAt: Date.now() });
       force();
     }
     setParsing(false); mark();
@@ -1088,6 +1104,9 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
   const fileIcon = { pdf: "file-text", xls: "sheet", xlsx: "sheet", csv: "sheet", doc: "file-type-2", docx: "file-type-2", txt: "file-text" };
   const jobOf = (id) => (jobs || {})[caseCtx.id + ":" + id] || {};
   const startAgent = (id) => { setErr(""); onStartJob && onStartJob(caseCtx, id); };
+  const thBase = { textAlign: "left", padding: "8px 10px", fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-muted)", background: "var(--surface)", zIndex: 1 };
+  const tdBase = { padding: "8px 10px", verticalAlign: "middle" };
+  const fmtUploaded = (ts) => ts ? new Date(ts).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
   return (
     <div style={{ maxWidth: 1000, margin: "0 auto" }}>
@@ -1137,46 +1156,56 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
       <SectionTitle eyebrow="Langkah 1" title="Dokumen & Keterangan" right={<Badge tone="accent" dot>{uploaded.length ? `${uploaded.length} dokumen terunggah` : `${docs.length} contoh`}</Badge>} />
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)", gap: 16, marginBottom: 28 }}>
         <Card>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {uploaded.length === 0 && <div style={{ fontSize: 12, color: "var(--text-faint)", padding: "2px 2px 6px" }}>Belum ada dokumen diunggah. Contoh di bawah hanya ilustrasi — unggah dokumen asli untuk dianalisis AI.</div>}
-            {uploaded.map((d, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--teal-400)", borderRadius: "var(--radius-md)", background: "var(--accent-quiet)" }}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--surface)", color: "var(--accent-hover)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon n={fileIcon[d.ext] || "file"} s={17} /></div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>{d.chars.toLocaleString("id-ID")} karakter terbaca</div>
-                </div>
-                <div style={{ width: 196, flexShrink: 0 }}><Select value={d.docType || "Laporan Keuangan/Tahunan"} onChange={(e) => { caseCtx.docText[i].docType = e.target.value; mark(); force(); }} options={DOC_TYPES} /></div>
-                <Badge tone={d.chars > 40 ? "positive" : "warning"} size="sm" dot>{d.chars > 40 ? "terbaca" : "kosong"}</Badge>
-                <button onClick={() => removeDoc(i)} title="Hapus" style={{ width: 24, height: 24, border: "none", background: "transparent", color: "var(--text-faint)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon n="x" s={14} /></button>
+          {uploaded.length === 0 ? (
+            <div>
+              <div style={{ fontSize: 12, color: "var(--text-faint)", padding: "2px 2px 10px" }}>Belum ada dokumen diunggah. Unggah laporan keuangan, presentasi, atau artikel berita untuk dianalisis AI.</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7, opacity: 0.55, marginBottom: 2 }}>
+                {docs.slice(0, 3).map((d) => (
+                  <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 12, color: "var(--text-muted)" }}>
+                    <Icon n={fileIcon[d.type] || "file"} s={14} /><span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 10, fontFamily: "var(--font-mono)" }}>contoh</span>
+                  </div>
+                ))}
               </div>
-            ))}
-            {uploaded.length === 0 && docs.map((d) => (
-              <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", background: "var(--surface-sunken)", opacity: 0.65 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--bg-subtle)", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon n={fileIcon[d.type] || "file"} s={17} /></div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{d.size} · contoh</div>
-                </div>
-                <Badge tone="neutral" size="sm">{d.kind}</Badge>
-              </div>
-            ))}
-            <input ref={docFileRef} type="file" accept=".pdf,.xlsx,.xls,.csv,.docx,.txt" multiple style={{ display: "none" }} onChange={onDocs} />
-            <button onClick={() => docFileRef.current && docFileRef.current.click()} disabled={parsing} style={{ marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 44, border: "1.5px dashed var(--border-strong)", borderRadius: "var(--radius-md)", background: parsing ? "var(--bg-subtle)" : "transparent", color: "var(--text-muted)", cursor: parsing ? "wait" : "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600 }}>
-              <Icon n="upload-cloud" s={17} /> {parsing ? "Memproses dokumen…" : "Unggah dokumen (PDF, Excel, Word, teks)"}
-            </button>
-          </div>
+            </div>
+          ) : (
+            <div style={{ maxHeight: 268, overflowY: "auto", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...thBase, position: "sticky", top: 0 }}>Dokumen</th>
+                    <th style={{ ...thBase, position: "sticky", top: 0 }}>Jenis</th>
+                    <th style={{ ...thBase, position: "sticky", top: 0, textAlign: "right" }}>Karakter</th>
+                    <th style={{ ...thBase, position: "sticky", top: 0 }}>Diunggah</th>
+                    <th style={{ ...thBase, position: "sticky", top: 0 }}>Status</th>
+                    <th style={{ ...thBase, position: "sticky", top: 0, width: 28 }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {uploaded.map((d, i) => (
+                    <tr key={i} style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                      <td style={tdBase}><div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Icon n={fileIcon[d.ext] || "file"} s={15} style={{ color: "var(--accent-hover)", flexShrink: 0 }} /><span title={d.name} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 150, fontWeight: 600, color: "var(--text-strong)" }}>{d.name}</span></div></td>
+                      <td style={tdBase}><div style={{ width: 168 }}><Select value={d.docType || "Laporan Keuangan/Tahunan"} onChange={(e) => { caseCtx.docText[i].docType = e.target.value; mark(); force(); }} options={DOC_TYPES} /></div></td>
+                      <td style={{ ...tdBase, textAlign: "right", fontFamily: "var(--font-mono)", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{d.chars.toLocaleString("id-ID")}</td>
+                      <td style={{ ...tdBase, whiteSpace: "nowrap", color: "var(--text-muted)", fontSize: 11.5 }}>{fmtUploaded(d.uploadedAt)}</td>
+                      <td style={tdBase}><Badge tone={d.chars > 40 ? "positive" : "warning"} size="sm" dot>{d.chars > 40 ? "terbaca" : "kosong"}</Badge></td>
+                      <td style={tdBase}><button onClick={() => removeDoc(i)} title="Hapus" style={{ width: 24, height: 24, border: "none", background: "transparent", color: "var(--text-faint)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon n="x" s={14} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <input ref={docFileRef} type="file" accept=".pdf,.xlsx,.xls,.csv,.docx,.txt" multiple style={{ display: "none" }} onChange={onDocs} />
+          <button onClick={() => docFileRef.current && docFileRef.current.click()} disabled={parsing} style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 44, width: "100%", border: "1.5px dashed var(--border-strong)", borderRadius: "var(--radius-md)", background: parsing ? "var(--bg-subtle)" : "transparent", color: "var(--text-muted)", cursor: parsing ? "wait" : "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600 }}>
+            <Icon n="upload-cloud" s={17} /> {parsing ? "Memproses dokumen…" : "Unggah dokumen (PDF, Excel, Word, teks)"}
+          </button>
         </Card>
         <Card>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)", marginBottom: 8 }}>Keterangan tambahan</div>
           <Textarea value={caseCtx.notes || ""} onChange={(e) => { caseCtx.notes = e.target.value; mark(); force(); }} rows={4} placeholder="mis. Fokuskan pada siklus pendapatan dan piutang; soroti transaksi pihak berelasi." />
           <div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>Keterangan ini disertakan sebagai konteks tambahan saat agen berjalan.</div>
-          <div style={{ marginTop: 14, fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Dokumen dikenali</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-            {uploaded.length
-              ? uploaded.map((d, i) => <Tag key={i} icon={<Icon n="file-text" s={12} />}>{d.name}</Tag>)
-              : <span style={{ fontSize: 12, color: "var(--text-faint)" }}>Belum ada dokumen — unggah untuk dianalisis.</span>}
-          </div>
+<div style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 12 }}>Daftar dokumen ada di tabel sebelah kiri.</div>
         </Card>
       </div>
 
@@ -1188,11 +1217,12 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
           const job = jobOf(a.id);
           const isRun = job.status === "running";
           const done = caseCtx.agents.includes(a.id);
+          const analyzedAt = (caseCtx.analysis && caseCtx.analysis[a.id] && caseCtx.analysis[a.id].analyzedAt) || null;
           return (
             <Card key={a.id} padding="lg" style={{ position: "relative", overflow: "hidden", borderColor: isRun ? a.color : "var(--border)" }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                 <div style={{ width: 48, height: 48, borderRadius: 12, background: a.bg, color: a.color, display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n={a.icon} s={24} /></div>
-                {isRun ? <Badge tone="accent" size="sm" dot>Berjalan</Badge> : done && <Badge tone="positive" size="sm" dot>Selesai</Badge>}
+                {isRun ? <Badge tone="accent" size="sm" dot>Berjalan</Badge> : done ? <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}><Badge tone="positive" size="sm" dot>Selesai</Badge>{analyzedAt ? <span style={{ fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{analyzedAt}</span> : null}</div> : null}
               </div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-strong)", marginTop: 14, letterSpacing: "-0.01em" }}>{a.name}</div>
               <p style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55, marginTop: 7, minHeight: 74 }}>{a.desc}</p>
@@ -1204,6 +1234,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
                 </div>
               ) : done ? (
                 <div style={{ marginTop: 12 }}>
+                  {analyzedAt ? <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--text-muted)", marginBottom: 10 }}><Icon n="clock" s={12} /> Pembaruan terakhir: {analyzedAt}</div> : null}
                   <Button variant="primary" block iconLeft={<Icon n="eye" s={15} />} onClick={() => onRunAgent(a.id)}>
                     Lihat Analisis
                   </Button>
@@ -2335,7 +2366,11 @@ function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt, versioning }) {
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>Matriks Risiko · Dampak × Kemungkinan</div>
                 {cell ? <button onClick={() => setCell(null)} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 11.5, fontWeight: 700, color: "var(--accent-hover)" }}>Tampilkan semua</button> : null}
               </div>
-              <table style={{ borderCollapse: "separate", borderSpacing: 3, width: "100%", tableLayout: "fixed" }}>
+              <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", flexShrink: 0 }}>Dampak →</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", textAlign: "center", marginBottom: 4, paddingLeft: 46 }}>Kemungkinan →</div>
+                  <table style={{ borderCollapse: "separate", borderSpacing: 3, width: "100%", tableLayout: "fixed" }}>
                 <thead>
                   <tr>
                     <th style={{ width: 46 }}></th>
@@ -2366,7 +2401,9 @@ function AgentRisk({ d, caseCtx, onRerun, rerunning, analyzedAt, versioning }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                  </table>
+                </div>
+              </div>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: "var(--text-faint)", marginTop: 3, paddingLeft: 49 }}>
                 <span>← Kemungkinan lebih rendah</span><span>lebih tinggi →</span>
               </div>

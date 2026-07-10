@@ -1,6 +1,6 @@
 {
   "name": "stratix-console",
-  "version": "1.2.6",
+  "version": "1.2.8",
   "description": "STRATIX Console — platform konsultan AI untuk analisis kesehatan perusahaan.",
   "author": "Mandiri Capital Indonesia",
   "license": "UNLICENSED",
@@ -10,7 +10,8 @@
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win --x64",
-    "release": "electron-builder --win --x64 --publish always"
+    "release": "electron-builder --win --x64 --publish always",
+    "dist:msi": "electron-builder --win msi --x64"
   },
   "dependencies": {
     "electron-updater": "^6.3.9"
@@ -44,6 +45,12 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "msi",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -59,6 +66,15 @@
       "shortcutName": "STRATIX Console",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico"
+    },
+    "msi": {
+      "oneClick": false,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "STRATIX Console",
+      "artifactName": "STRATIX-Console-${version}.${ext}"
     }
   }
 }
