@@ -214,7 +214,7 @@ window.STX_DATA = {
   });
   D.demoCase = {
     id: "Case-000-DEMO", seq: 0, ticker: "NSAT",
-    company: "PT Nusantara Sejahtera Tbk", initials: "NSA", logoColor: "#0E7C8B", logo: null,
+    company: "PT Nusantara Sejahtera Tbk", initials: "NSA", logoColor: "#0E7C8B", logo: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9J2cnIHgxPScwJyB5MT0nMCcgeDI9JzEnIHkyPScxJz48c3RvcCBvZmZzZXQ9JzAnIHN0b3AtY29sb3I9JyMxMjMyNTYnLz48c3RvcCBvZmZzZXQ9JzEnIHN0b3AtY29sb3I9JyMwQTFCMzQnLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgcng9JzIyJyBmaWxsPSd1cmwoI2cpJy8+PHJlY3QgeD0nMjknIHk9JzI3JyB3aWR0aD0nOScgaGVpZ2h0PSc0Nicgcng9JzIuNScgZmlsbD0nI2ZmZmZmZicvPjxyZWN0IHg9JzYyJyB5PScyNycgd2lkdGg9JzknIGhlaWdodD0nNDYnIHJ4PScyLjUnIGZpbGw9JyNmZmZmZmYnLz48cGF0aCBkPSdNMzMuNSAzMSBMNjYuNSA2OScgZmlsbD0nbm9uZScgc3Ryb2tlPScjMTJBM0I0JyBzdHJva2Utd2lkdGg9JzkuNScgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PGNpcmNsZSBjeD0nNzEnIGN5PScyOScgcj0nNi41JyBmaWxsPScjNkJEOEU0Jy8+PC9zdmc+",
     sector: "Industri Pengolahan (Manufaktur)", bidang: "Manufaktur komponen otomotif",
     status: "Swasta Nasional", founded: "1998", website: "", revenue: "Rp 4,82 T", revenueDate: "2024-12",
     docText: [], updated: "contoh", updatedAt: Date.now(), agents: ["finance", "risk", "transform"],
