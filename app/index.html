@@ -2987,8 +2987,6 @@ function AkunPanel({ user, onUpdateUser }) {
   const [name, setName] = React.useState((user && user.name) || "");
   const [avatar, setAvatar] = React.useState((user && user.avatar) || null);
   const [saved, setSaved] = React.useState(false);
-  const [showGuide, setShowGuide] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
   const [err, setErr] = React.useState("");
   const upRef = React.useRef(null);
   React.useEffect(refreshIcons);
@@ -3120,6 +3118,8 @@ function Settings({ user, onUpdateUser, initialTab }) {
   const [apiKey, setApiKey] = React.useState(() => (AIx ? AIx.getKeyFor(AIx.getProvider()) : ""));
   const [model, setModelS] = React.useState(() => (AIx ? AIx.getModelFor(AIx.getProvider()) : ""));
   const [saved, setSaved] = React.useState(false);
+  const [showGuide, setShowGuide] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
   const connected = !!apiKey;
   const selectProvider = (id) => { setProviderS(id); if (AIx) { AIx.setProvider(id); setApiKey(AIx.getKeyFor(id)); setModelS(AIx.getModelFor(id)); } };
   const saveKey = () => { if (AIx) { AIx.setKeyFor(provider, apiKey.trim()); AIx.setModelFor(provider, model); AIx.setProvider(provider); } setSaved(true); setTimeout(() => setSaved(false), 1800); };
