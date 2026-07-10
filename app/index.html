@@ -218,7 +218,7 @@ function CompanyMark({ initials, color, size = 40, radius = 10 }) {
 }
 
 /* ---------- App shell ---------- */
-function AppShell({ active, onNav, openCases = [], activeCaseId, dirtyIds = {}, jobs = {}, onSelectCase, onCloseCase, theme, onToggleTheme, children, title, subtitle, actions, onBack, user, onOpenAccount, onLogout, onOpenTutorial }) {
+function AppShell({ active, onNav, openCases = [], activeCaseId, dirtyIds = {}, jobs = {}, onSelectCase, onCloseCase, theme, onToggleTheme, children, title, subtitle, actions, onBack, user, onOpenAccount, onLogout, onOpenTutorial, onCloseAll }) {
   const nav = [
     { id: "library", label: "Pustaka Case", icon: "folders" },
     { id: "workspace", label: "Ruang Kerja", icon: "layout-panel-left", disabled: !activeCaseId },
@@ -255,15 +255,16 @@ function AppShell({ active, onNav, openCases = [], activeCaseId, dirtyIds = {}, 
 
           {openCases.length > 0 && (
             <div style={{ marginTop: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)", padding: "6px 10px 8px" }}>Case Aktif ({openCases.length})</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px 8px" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)" }}>Case Aktif ({openCases.length})</span>
+                <button onClick={onCloseAll} title="Tutup semua case" style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.02em", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 4px", borderRadius: 6 }}><Icon n="x" s={12} /> Tutup semua</button>
+              </div>
               {openCases.map((c) => {
                 const on = c.id === activeCaseId;
                 return (
                   <div key={c.id} style={{ marginBottom: 4 }}>
                     <div onClick={() => onSelectCase(c.id)} style={{ display: "flex", gap: 9, alignItems: "center", padding: "8px 8px 8px 10px", background: on ? "var(--accent-quiet)" : "var(--bg-subtle)", borderRadius: "var(--radius-md)", cursor: "pointer", boxShadow: on ? "inset 3px 0 0 var(--accent)" : "none" }}>
-                      {c.logo
-                        ? <img src={c.logo} alt="" style={{ width: 30, height: 30, borderRadius: 7, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 2, flexShrink: 0 }} />
-                        : <CompanyMark initials={c.initials} color={c.logoColor} size={30} radius={7} />}
+                      <LogoImg src={c.logo} initials={c.initials || caseTicker(c).slice(0, 3)} color={c.logoColor} size={30} radius={7} pad={2} />
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-strong)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.company}</span>
@@ -591,11 +592,18 @@ Object.assign(window, { Icon, refreshIcons, CompanyMark, AppShell, LineChart, Ba
 const LibNS = window.STRATIXDesignSystem_72cbdd;
 
 /* ---------- Pustaka Case (library) ---------- */
+function domainOf(url) { if (!url) return ""; return String(url).trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").split(/[\/?#]/)[0].toLowerCase(); }
+function logoUrlFor(website) { const d = domainOf(website); return (d && d.indexOf(".") >= 0) ? "https://logo.clearbit.com/" + d : ""; }
+function isAutoLogo(l) { return typeof l === "string" && l.indexOf("logo.clearbit.com") >= 0; }
+function LogoImg({ src, initials, color, size = 40, radius = 10, pad = 3 }) {
+  const [err, setErr] = React.useState(false);
+  React.useEffect(() => { setErr(false); }, [src]);
+  if (!src || err) return <CompanyMark initials={initials} color={color} size={size} radius={radius} />;
+  return <img src={src} alt="" onError={() => setErr(true)} style={{ width: size, height: size, borderRadius: radius, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: pad, flexShrink: 0 }} />;
+}
+
 function CaseLogo({ c, size = 40, radius = 10 }) {
-  if (c.logo) {
-    return <img src={c.logo} alt={c.company} style={{ width: size, height: size, borderRadius: radius, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 3, flexShrink: 0 }} />;
-  }
-  return <CompanyMark initials={c.initials} color={c.logoColor} size={size} radius={radius} />;
+  return <LogoImg src={c.logo} initials={c.initials || caseTicker(c).slice(0, 3)} color={c.logoColor} size={size} radius={radius} />;
 }
 
 function caseSeq(c) { if (c && c.seq != null) return c.seq; const m = /Case-(\d+)-/.exec((c && c.id) || ""); return m ? parseInt(m[1], 10) : 0; }
@@ -918,7 +926,7 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
     setFilling(true); setAfErr("");
     try {
       const r = await AI.analyzePrimer({ company, contextText: ctx, website: form.website });
-      setForm((f) => ({ ...f, ticker: (r.ticker || f.ticker || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4), founded: r.founded || f.founded, sector: r.sector || f.sector, bidang: r.bidang || f.bidang, revenue: r.revenue || f.revenue, revenueDate: r.revenueDate || f.revenueDate, status: r.status || f.status }));
+      setForm((f) => ({ ...f, ticker: (r.ticker || f.ticker || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4), founded: r.founded || f.founded, sector: r.sector || f.sector, bidang: r.bidang || f.bidang, revenue: r.revenue || f.revenue, revenueDate: r.revenueDate || f.revenueDate, status: r.status || f.status, logo: (logoUrlFor(f.website) && (!f.logo || isAutoLogo(f.logo))) ? logoUrlFor(f.website) : f.logo }));
       if (!company && r.company) setCompany(r.company);
       setAutofilled(true);
     } catch (e) {
@@ -979,9 +987,7 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
 
         {/* Logo perusahaan */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18, padding: 14, border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", background: "var(--surface-sunken)" }}>
-          {form.logo
-            ? <img src={form.logo} alt="logo" style={{ width: 56, height: 56, borderRadius: 12, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 4, flexShrink: 0 }} />
-            : <CompanyMark initials={initials} color="#0E7C8B" size={56} radius={12} />}
+          <LogoImg src={form.logo} initials={initials} color="#0E7C8B" size={56} radius={12} pad={4} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>Logo perusahaan</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>Kosongkan agar AI mengenali logo otomatis dari website atau dokumen. Kini menampilkan inisial <strong>{initials}</strong>.</div>
@@ -1087,26 +1093,25 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
     setEf({ company: caseCtx.company || "", ticker: caseTicker(caseCtx), founded: caseCtx.founded || "", sector: caseCtx.sector || "", bidang: caseCtx.bidang || "", status: caseCtx.status || "", revenue: caseCtx.revenue || "", revenueDate: caseCtx.revenueDate || "", website: caseCtx.website || "", logo: caseCtx.logo || null });
     setFilling(false); setFillErr(""); setEditing(true);
   };
-  // Ambil revenue (Rp Miliar) + tahun terbaru dari hasil Agen Analis Keuangan
+  // Ambil revenue terbaru dari Agen Keuangan via revenueSeries (ternormalisasi → Triliun, lalu ke Miliar) agar SINKRON dengan Pustaka Case
   const latestRevFromAnalysis = () => {
     const fin = (caseCtx.analysis && caseCtx.analysis.finance) || null;
-    if (!fin) return null;
-    const F = fin.financials || {};
-    const labels = F.labels || fin.revenueLabels || [];
-    const series = (F.lines && Array.isArray(F.lines.pendapatan)) ? F.lines.pendapatan
-      : (Array.isArray(fin.revenueSeries) ? fin.revenueSeries.map((v) => (v == null ? null : v * 1000)) : []);
-    if (!labels.length || !series.length) return null;
-    for (let i = Math.min(labels.length, series.length) - 1; i >= 0; i--) {
-      const v = series[i];
-      if (v != null && !isNaN(v)) return { year: String(labels[i]), miliar: Number(v) };
-    }
-    return null;
+    if (!fin || !Array.isArray(fin.revenueSeries)) return null;
+    const labels = fin.revenueLabels || [];
+    const rs = fin.revenueSeries;
+    let idx = -1;
+    for (let i = rs.length - 1; i >= 0; i--) { if (rs[i] != null && !isNaN(rs[i])) { idx = i; break; } }
+    if (idx < 0) return null;
+    const clean = rs.filter((x) => x != null && !isNaN(x));
+    const sc = Math.max(...clean.map((x) => Math.abs(x))) >= 1000 ? 1000 : 1; // revenueSeries dalam Miliar → normalkan ke Triliun
+    const t = rs[idx] / sc;          // Triliun
+    return { year: String(labels[idx] || ""), miliar: t * 1000 }; // Miliar
   };
   const pullRevenue = () => {
     const r = latestRevFromAnalysis();
     if (!r) { setFillErr("Belum ada angka revenue pada analisis keuangan. Jalankan Agen Analis Keuangan terlebih dahulu."); return; }
     setFillErr("");
-    const nice = "Rp " + Math.round(r.miliar).toLocaleString("id-ID") + " M";
+    const nice = "Rp " + fmtID(r.miliar, 2) + " M";
     setEf((p) => ({ ...p, revenue: nice, revenueDate: r.year + "-12" }));
   };
   const runAiUpdate = async () => {
@@ -1116,7 +1121,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
     setFilling(true); setFillErr("");
     try {
       const r = await AI.analyzePrimer({ company: ef.company, contextText: ctx, website: ef.website });
-      setEf((p) => ({ ...p, ticker: (r.ticker || p.ticker || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4), founded: r.founded || p.founded, sector: r.sector || p.sector, bidang: r.bidang || p.bidang, revenue: r.revenue || p.revenue, revenueDate: r.revenueDate || p.revenueDate, status: r.status || p.status, company: (!p.company && r.company) ? r.company : p.company }));
+      setEf((p) => ({ ...p, ticker: (r.ticker || p.ticker || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4), founded: r.founded || p.founded, sector: r.sector || p.sector, bidang: r.bidang || p.bidang, revenue: r.revenue || p.revenue, revenueDate: r.revenueDate || p.revenueDate, status: r.status || p.status, company: (!p.company && r.company) ? r.company : p.company, logo: (logoUrlFor(p.website) && (!p.logo || isAutoLogo(p.logo))) ? logoUrlFor(p.website) : p.logo }));
     } catch (e) {
       setFillErr("Update otomatis gagal: " + e.message);
     } finally {
@@ -1169,9 +1174,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
       <Card padding="lg" style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <div style={{ position: "relative", flexShrink: 0 }}>
-            {caseCtx.logo
-              ? <img src={caseCtx.logo} alt="logo" style={{ width: 56, height: 56, borderRadius: 14, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 4 }} />
-              : <CompanyMark initials={caseCtx.initials} color={caseCtx.logoColor} size={56} radius={14} />}
+            <LogoImg src={caseCtx.logo} initials={caseCtx.initials || caseTicker(caseCtx).slice(0, 3)} color={caseCtx.logoColor} size={56} radius={14} pad={4} />
             <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onLogo} />
             <button onClick={() => logoRef.current && logoRef.current.click()} title="Ganti logo" style={{ position: "absolute", right: -4, bottom: -4, width: 22, height: 22, borderRadius: 999, border: "2px solid var(--surface)", background: "var(--brand)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}><Icon n="camera" s={11} /></button>
           </div>
@@ -1315,9 +1318,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "var(--surface-sunken)" }}>
-            {ef.logo
-              ? <img src={ef.logo} alt="logo" style={{ width: 48, height: 48, borderRadius: 11, objectFit: "contain", background: "#fff", border: "1px solid var(--border)", padding: 3, flexShrink: 0 }} />
-              : <CompanyMark initials={caseCtx.initials} color={caseCtx.logoColor} size={48} radius={11} />}
+            <LogoImg src={ef.logo} initials={caseCtx.initials || caseTicker(caseCtx).slice(0, 3)} color={caseCtx.logoColor} size={48} radius={11} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>Logo perusahaan</div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Ganti logo, atau kosongkan agar AI mengenali otomatis.</div>
@@ -2878,6 +2879,34 @@ function printChat(caseName, agentLabel, msgs) {
   setTimeout(() => ov.remove(), 600);
 }
 
+function chatInline(text) {
+  const out = []; const re = /\*\*(.+?)\*\*/g; let last = 0, m;
+  while ((m = re.exec(text))) { if (m.index > last) out.push(text.slice(last, m.index)); out.push(React.createElement("strong", { key: out.length }, m[1])); last = m.index + m[0].length; }
+  if (last < text.length) out.push(text.slice(last));
+  return out.length ? out : [text];
+}
+function renderRich(text) {
+  const lines = String(text || "").split("\n"); const blocks = []; let list = null;
+  const flush = () => { if (list) { blocks.push(list); list = null; } };
+  lines.forEach((raw) => {
+    const line = raw.replace(/\s+$/, ""); let m;
+    if (!line.trim()) { flush(); blocks.push({ t: "space" }); return; }
+    if ((m = /^\s*#{1,6}\s+(.*)$/.exec(line))) { flush(); blocks.push({ t: "h", text: m[1] }); return; }
+    if ((m = /^\s*[-*\u2022]\s+(.*)$/.exec(line))) { if (!list || list.t !== "ul") { flush(); list = { t: "ul", items: [] }; } list.items.push(m[1]); return; }
+    if ((m = /^\s*\d+[.)]\s+(.*)$/.exec(line))) { if (!list || list.t !== "ol") { flush(); list = { t: "ol", items: [] }; } list.items.push(m[1]); return; }
+    flush(); blocks.push({ t: "p", text: line });
+  });
+  flush();
+  return blocks.map((b, i) => {
+    if (b.t === "h") return React.createElement("div", { key: i, style: { fontWeight: 700, color: "var(--text-strong)", margin: "9px 0 2px", fontSize: 13.5 } }, chatInline(b.text));
+    if (b.t === "p") return React.createElement("div", { key: i, style: { margin: "3px 0" } }, chatInline(b.text));
+    if (b.t === "space") return React.createElement("div", { key: i, style: { height: 5 } });
+    if (b.t === "ul") return React.createElement("ul", { key: i, style: { margin: "3px 0", paddingLeft: 18 } }, b.items.map((it, j) => React.createElement("li", { key: j, style: { margin: "2px 0" } }, chatInline(it))));
+    if (b.t === "ol") return React.createElement("ol", { key: i, style: { margin: "3px 0", paddingLeft: 20 } }, b.items.map((it, j) => React.createElement("li", { key: j, style: { margin: "2px 0" } }, chatInline(it))));
+    return null;
+  });
+}
+
 function ChatPanel({ caseId, caseName, agentKey, agentLabel, period, contextText, onCollapse }) {
   const { Button } = ChatNS;
   const storeKey = `stx-chat-${caseId || "x"}-${agentKey}`;
@@ -2937,13 +2966,13 @@ function ChatPanel({ caseId, caseName, agentKey, agentLabel, period, contextText
         {msgs.map((m, i) => (
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
             <div style={{
-              maxWidth: "86%", padding: "9px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.55, whiteSpace: "pre-wrap",
+              maxWidth: "86%", padding: "9px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.55, whiteSpace: m.role === "user" ? "pre-wrap" : "normal", wordBreak: "break-word",
               background: m.role === "user" ? "var(--brand)" : "var(--surface)",
               color: m.role === "user" ? "var(--text-on-brand)" : "var(--text-body)",
               border: m.role === "user" ? "none" : "1px solid var(--border)",
               borderBottomRightRadius: m.role === "user" ? 3 : 12,
               borderBottomLeftRadius: m.role === "user" ? 12 : 3,
-            }}>{m.text}</div>
+            }}>{m.role === "user" ? m.text : renderRich(m.text)}</div>
           </div>
         ))}
         {typing && <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", paddingLeft: 4 }}>Analis AI sedang mengetik…</div>}
@@ -3368,6 +3397,7 @@ function App() {
   const [tutorialOpen, setTutorialOpen] = React.useState(false);
   const [tutorialFresh, setTutorialFresh] = React.useState(false);
   const [pendingLogout, setPendingLogout] = React.useState(false);
+  const [pendingCloseAll, setPendingCloseAll] = React.useState(false);
   const [jobs, setJobs] = React.useState({});
   const jobTimers = React.useRef({});
   const { Button, IconButton, Badge, Dialog } = NS;
@@ -3516,6 +3546,8 @@ function App() {
   const finishTutorial = () => { try { localStorage.setItem("stx_tutorial_seen", "1"); } catch (e) {} setTutorialOpen(false); if (tutorialFresh) { setTutorialFresh(false); setSettingsTab("ai"); setView("settings"); } };
   const performLogout = () => { if (window.STX_AUTH) window.STX_AUTH.logout(); setUser(null); setView("landing"); };
   const doLogout = () => { if (Object.values(dirtyIds).some(Boolean)) setPendingLogout(true); else performLogout(); };
+  const performCloseAll = (save) => { if (save) { openCases.forEach((c) => { if (dirtyIds[c.id]) saveCase(c.id); }); } persist(); setOpenCases([]); setActiveCaseId(null); setDirtyIds({}); setView("library"); setPendingCloseAll(false); };
+  const doCloseAll = () => { if (!openCases.length) return; if (openCases.some((c) => dirtyIds[c.id])) setPendingCloseAll(true); else performCloseAll(false); };
 
   const Ic = ({ n, s = 16 }) => <Icon n={n} s={s} />;
 
@@ -3559,7 +3591,7 @@ function App() {
 
   return (
     <React.Fragment>
-      <AppShell active={view} onNav={nav} user={user} onOpenAccount={() => { setSettingsTab("akun"); setView("settings"); }} onLogout={doLogout} onOpenTutorial={() => setTutorialOpen(true)}
+      <AppShell active={view} onNav={nav} user={user} onOpenAccount={() => { setSettingsTab("akun"); setView("settings"); }} onLogout={doLogout} onOpenTutorial={() => setTutorialOpen(true)} onCloseAll={doCloseAll}
         openCases={openCases} activeCaseId={activeCaseId} dirtyIds={dirtyIds} jobs={jobs}
         onSelectCase={selectCase} onCloseCase={requestClose}
         theme={theme} onToggleTheme={() => setTheme(theme === "light" ? "dark" : "light")}
@@ -3586,6 +3618,12 @@ function App() {
           <Button variant="ghost" onClick={() => setPendingLogout(false)}>Batal</Button>
           <Button variant="secondary" onClick={() => { setPendingLogout(false); performLogout(); }}>Keluar tanpa simpan</Button>
           <Button variant="primary" iconLeft={<Ic n="save" s={15} />} onClick={() => { persist(); setPendingLogout(false); performLogout(); }}>Simpan &amp; keluar</Button>
+        </React.Fragment>} />
+      <Dialog open={pendingCloseAll} onClose={() => setPendingCloseAll(false)} title="Tutup semua case?" description="Sebagian case memiliki perubahan yang belum disimpan. Apa yang ingin dilakukan?" width={490}
+        footer={<React.Fragment>
+          <Button variant="ghost" onClick={() => setPendingCloseAll(false)}>Batal</Button>
+          <Button variant="secondary" onClick={() => performCloseAll(false)}>Tutup tanpa simpan</Button>
+          <Button variant="primary" iconLeft={<Ic n="save" s={15} />} onClick={() => performCloseAll(true)}>Simpan &amp; tutup semua</Button>
         </React.Fragment>} />
       {tutorialOpen && <Tutorial onClose={finishTutorial} onFinish={finishTutorial} />}
     </React.Fragment>
