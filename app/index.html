@@ -598,14 +598,32 @@ function CaseLogo({ c, size = 40, radius = 10 }) {
   return <CompanyMark initials={c.initials} color={c.logoColor} size={size} radius={radius} />;
 }
 
+function caseSeq(c) { if (c && c.seq != null) return c.seq; const m = /Case-(\d+)-/.exec((c && c.id) || ""); return m ? parseInt(m[1], 10) : 0; }
+function caseTicker(c) { if (c && c.ticker) return String(c.ticker).toUpperCase(); const m = /Case-\d+-([A-Za-z0-9]+)/.exec((c && c.id) || ""); return m ? m[1].toUpperCase() : "XXXX"; }
+function caseIndex(c) { return "Case-" + String(caseSeq(c)).padStart(3, "0") + "-" + caseTicker(c); }
+
 function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
   const { Card, Badge, Input, Button } = LibNS;
-  const healthTone = { "Sehat": "positive", "Waspada": "warning", "Kritis": "negative" };
   const finScore = (c) => (c.analysis && c.analysis.finance && c.analysis.finance.healthScore != null) ? c.analysis.finance.healthScore : null;
   const rskScore = (c) => (c.analysis && c.analysis.risk && c.analysis.risk.score != null) ? c.analysis.risk.score : null;
   const rskLevel = (c) => (c.analysis && c.analysis.risk && c.analysis.risk.level) || "";
   const healthColor = (v) => v == null ? "var(--text-faint)" : v >= 70 ? "var(--positive-600)" : v >= 40 ? "var(--warning-600)" : "var(--negative-600)";
   const riskColor = (v, lv) => { if (v == null) return "var(--text-faint)"; if (/critical|high/.test(lv)) return "var(--negative-600)"; if (/moderate/.test(lv)) return "var(--warning-600)"; if (/low/.test(lv)) return "var(--positive-600)"; return v >= 70 ? "var(--negative-600)" : v >= 40 ? "var(--warning-600)" : "var(--positive-600)"; };
+
+  // Revenue konsisten: derive dari analisis keuangan (ternormalisasi) → Triliun
+  const revValueT = (c) => {
+    const fa = c.analysis && c.analysis.finance;
+    if (fa && Array.isArray(fa.revenueSeries)) {
+      const rs = fa.revenueSeries.filter((x) => x != null && !isNaN(x));
+      if (rs.length) { const sc = Math.max(...rs.map((x) => Math.abs(x))) >= 1000 ? 1000 : 1; return rs[rs.length - 1] / sc; }
+    }
+    return null;
+  };
+  const fmtRevT = (t) => { const a = Math.abs(t); if (a >= 1) return "Rp " + fmtID(t, 2) + " T"; if (a >= 0.001) return "Rp " + fmtID(t * 1000, 2) + " M"; if (a > 0) return "Rp " + fmtID(t * 1e6, 2) + " Jt"; return "Rp 0"; };
+  const revDisplay = (c) => { const t = revValueT(c); return t != null ? fmtRevT(t) : (c.revenue || "—"); };
+  const lastAct = (c) => (c.updatedAt != null && !isNaN(c.updatedAt)) ? c.updatedAt : null;
+  const fmtDate = (ts) => ts == null ? "—" : new Date(ts).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+
   const ScorePill = ({ v, color, align }) => v == null
     ? <span style={{ color: "var(--text-faint)" }}>—</span>
     : <span style={{ display: "inline-flex", alignItems: "center", gap: 5, justifyContent: align || "flex-end" }}>
@@ -613,36 +631,60 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
         <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-strong)" }}>{v}</span>
         <span style={{ fontSize: 10.5, color: "var(--text-faint)" }}>/100</span>
       </span>;
+
   const [view, setView] = React.useState("table");
   const [query, setQuery] = React.useState("");
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [fStatus, setFStatus] = React.useState("all");
-  const [fHealth, setFHealth] = React.useState("all");
+  const [fRecency, setFRecency] = React.useState("all");
+  const [fRevenue, setFRevenue] = React.useState("all");
+  const [hMin, setHMin] = React.useState(0); const [hMax, setHMax] = React.useState(100);
+  const [rMin, setRMin] = React.useState(0); const [rMax, setRMax] = React.useState(100);
+  const [sortKey, setSortKey] = React.useState(null);
+  const [sortDir, setSortDir] = React.useState("asc");
   React.useEffect(refreshIcons);
 
-  const statusOpts = React.useMemo(() => Array.from(new Set(cases.map((c) => c.status).filter(Boolean))), [cases]);
-  const healthOpts = ["Sehat", "Waspada", "Kritis"];
+  const statusOpts = React.useMemo(() => Array.from(new Set(cases.map((c) => c.status).filter((x) => x && x !== "—"))), [cases]);
   const q = query.trim().toLowerCase();
+  const revBucket = (t) => { if (t == null) return null; if (t < 1) return "lt1"; if (t < 10) return "1-10"; if (t < 50) return "10-50"; if (t < 100) return "50-100"; return "gt100"; };
+  const now = Date.now();
   const filtered = cases.filter((c) => {
     if (fStatus !== "all" && c.status !== fStatus) return false;
-    if (fHealth !== "all" && c.health !== fHealth) return false;
+    if (fRecency !== "all") { const ts = lastAct(c); const days = parseInt(fRecency, 10); if (ts == null || (now - ts) > days * 86400000) return false; }
+    if (fRevenue !== "all") { if (revBucket(revValueT(c)) !== fRevenue) return false; }
+    if (hMin > 0 || hMax < 100) { const v = finScore(c); if (v == null || v < hMin || v > hMax) return false; }
+    if (rMin > 0 || rMax < 100) { const v = rskScore(c); if (v == null || v < rMin || v > rMax) return false; }
     if (!q) return true;
-    return [c.company, c.id, c.sector, c.status, c.bidang].filter(Boolean).some((s) => String(s).toLowerCase().includes(q));
+    return [c.company, caseIndex(c), caseTicker(c), c.sector, c.status, c.bidang].filter(Boolean).some((s) => String(s).toLowerCase().includes(q));
   });
-  const activeFilters = (fStatus !== "all" ? 1 : 0) + (fHealth !== "all" ? 1 : 0);
-  const noResults = cases.length > 0 && filtered.length === 0;
-  const FilterGroup = ({ label, value, options, onPick }) => (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 7 }}>{label}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {[["all", "Semua"], ...options.map((o) => [o, o])].map(([val, lbl]) => (
-          <button key={val} onClick={() => onPick(val)} style={{
-            fontSize: 12, fontWeight: 600, padding: "5px 11px", borderRadius: 999, cursor: "pointer",
-            border: "1px solid " + (value === val ? "var(--accent)" : "var(--border-strong)"),
-            background: value === val ? "var(--accent-quiet)" : "var(--surface)",
-            color: value === val ? "var(--accent-hover)" : "var(--text-body)",
-          }}>{lbl}</button>
-        ))}
+  const sortVal = (c, k) => { switch (k) { case "company": return (c.company || "").toLowerCase(); case "index": return caseSeq(c); case "ticker": return caseTicker(c); case "sector": return (c.sector || "").toLowerCase(); case "status": return (c.status || "").toLowerCase(); case "revenue": { const t = revValueT(c); return t == null ? -Infinity : t; } case "health": { const v = finScore(c); return v == null ? -Infinity : v; } case "risk": { const v = rskScore(c); return v == null ? -Infinity : v; } case "updated": { const t = lastAct(c); return t == null ? -Infinity : t; } default: return 0; } };
+  const sorted = sortKey ? [...filtered].sort((a, b) => { const va = sortVal(a, sortKey), vb = sortVal(b, sortKey); if (va < vb) return sortDir === "asc" ? -1 : 1; if (va > vb) return sortDir === "asc" ? 1 : -1; return 0; }) : filtered;
+  const toggleSort = (k) => { if (sortKey === k) setSortDir((d) => d === "asc" ? "desc" : "asc"); else { setSortKey(k); setSortDir("asc"); } };
+
+  const activeFilters = (fStatus !== "all" ? 1 : 0) + (fRecency !== "all" ? 1 : 0) + (fRevenue !== "all" ? 1 : 0) + ((hMin > 0 || hMax < 100) ? 1 : 0) + ((rMin > 0 || rMax < 100) ? 1 : 0);
+  const resetFilters = () => { setFStatus("all"); setFRecency("all"); setFRevenue("all"); setHMin(0); setHMax(100); setRMin(0); setRMax(100); };
+  const noResults = cases.length > 0 && sorted.length === 0;
+
+  const selStyle = { width: "100%", height: 38, borderRadius: 9, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-body)", padding: "0 10px", fontSize: 13, fontFamily: "var(--font-sans)", cursor: "pointer" };
+  const Dropdown = ({ label, value, onChange, options }) => (
+    <div style={{ marginBottom: 13 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>
+      <select value={value} onChange={(e) => onChange(e.target.value)} style={selStyle}>{options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+    </div>
+  );
+  const numBox = { width: 52, height: 30, borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-body)", padding: "0 6px", fontSize: 12, fontFamily: "var(--font-mono)", textAlign: "center" };
+  const RangeFilter = ({ label, min, max, setMin, setMax }) => (
+    <div style={{ marginBottom: 13 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 8 }}>{label}<span style={{ marginLeft: 6, fontFamily: "var(--font-mono)", color: "var(--text-faint)", fontWeight: 600 }}>{min}–{max}</span></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 10.5, color: "var(--text-muted)", width: 26 }}>Min</span>
+        <input type="range" min={0} max={100} value={min} onChange={(e) => setMin(Math.min(+e.target.value, max))} style={{ flex: 1, accentColor: "var(--accent)" }} />
+        <input type="number" min={0} max={100} value={min} onChange={(e) => setMin(Math.max(0, Math.min(+e.target.value || 0, max)))} style={numBox} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 10.5, color: "var(--text-muted)", width: 26 }}>Max</span>
+        <input type="range" min={0} max={100} value={max} onChange={(e) => setMax(Math.max(+e.target.value, min))} style={{ flex: 1, accentColor: "var(--accent)" }} />
+        <input type="number" min={0} max={100} value={max} onChange={(e) => setMax(Math.min(100, Math.max(+e.target.value || 0, min)))} style={numBox} />
       </div>
     </div>
   );
@@ -657,27 +699,28 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
     </div>
   );
 
-  const cell = { padding: "12px 16px", borderBottom: "1px solid var(--border-subtle)", whiteSpace: "nowrap", verticalAlign: "middle" };
+  const cell = { padding: "12px 14px", borderBottom: "1px solid var(--border-subtle)", whiteSpace: "nowrap", verticalAlign: "middle" };
+  const thBase = { padding: "11px 14px", whiteSpace: "nowrap", fontSize: "var(--text-xs)", fontWeight: 700, letterSpacing: "var(--ls-wide)", textTransform: "uppercase", color: "var(--text-muted)", background: "var(--bg-subtle)", borderBottom: "1px solid var(--border)", userSelect: "none" };
+  const Th = ({ label, k, align }) => (
+    <th onClick={k ? () => toggleSort(k) : undefined} style={{ ...thBase, textAlign: align || "left", cursor: k ? "pointer" : "default" }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: align === "right" ? "flex-end" : "flex-start", width: align === "right" ? "100%" : "auto" }}>
+        {label}
+        {k ? (sortKey === k ? <Icon n={sortDir === "asc" ? "chevron-up" : "chevron-down"} s={13} style={{ color: "var(--accent-hover)" }} /> : <Icon n="chevrons-up-down" s={12} style={{ opacity: 0.35 }} />) : null}
+      </span>
+    </th>
+  );
 
   return (
     <div>
       <div style={{ display: "flex", gap: 12, marginBottom: 22, alignItems: "center" }}>
         <div style={{ flex: 1, maxWidth: 340 }}>
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} prefix={<Icon n="search" s={15} />} placeholder="Cari case atau perusahaan…"
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} prefix={<Icon n="search" s={15} />} placeholder="Cari case, ticker, atau perusahaan…"
             suffix={query ? <button onClick={() => setQuery("")} title="Bersihkan" aria-label="Bersihkan pencarian" style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", display: "inline-flex", padding: 0 }}><Icon n="x" s={14} /></button> : null} />
         </div>
         <div style={{ flex: 1 }} />
-        {/* Toggle tabel / card */}
         <div style={{ display: "flex", padding: 3, background: "var(--bg-subtle)", borderRadius: "var(--radius-md)", gap: 2 }}>
           {[["table", "table-2", "Tabel"], ["card", "layout-grid", "Kartu"]].map(([m, ic, lbl]) => (
-            <button key={m} onClick={() => setView(m)} title={lbl} aria-label={lbl} style={{
-              width: 36, height: 30, border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: view === m ? "var(--surface)" : "transparent",
-              color: view === m ? "var(--accent-hover)" : "var(--text-muted)",
-              boxShadow: view === m ? "var(--shadow-xs)" : "none",
-              transition: "all var(--dur-fast) var(--ease-standard)",
-            }}><Icon n={ic} s={16} /></button>
+            <button key={m} onClick={() => setView(m)} title={lbl} aria-label={lbl} style={{ width: 36, height: 30, border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", background: view === m ? "var(--surface)" : "transparent", color: view === m ? "var(--accent-hover)" : "var(--text-muted)", boxShadow: view === m ? "var(--shadow-xs)" : "none" }}><Icon n={ic} s={16} /></button>
           ))}
         </div>
         <div style={{ position: "relative" }}>
@@ -687,11 +730,14 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
           {filterOpen && (
             <React.Fragment>
               <div onClick={() => setFilterOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 41, width: 288, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-lg)", padding: 16 }}>
-                <FilterGroup label="Status Perusahaan" value={fStatus} options={statusOpts} onPick={setFStatus} />
-                <FilterGroup label="Kesehatan" value={fHealth} options={healthOpts} onPick={setFHealth} />
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
-                  <button onClick={() => { setFStatus("all"); setFHealth("all"); }} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)" }}>Reset</button>
+              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 41, width: 324, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-lg)", padding: 16, maxHeight: "72vh", overflowY: "auto" }}>
+                <Dropdown label="Kategori Perusahaan" value={fStatus} onChange={setFStatus} options={[["all", "Semua kategori"], ...statusOpts.map((o) => [o, o])]} />
+                <Dropdown label="Data Terakhir" value={fRecency} onChange={setFRecency} options={[["all", "Kapan saja"], ["1", "Hari ini"], ["7", "7 hari terakhir"], ["30", "30 hari terakhir"], ["90", "90 hari terakhir"]]} />
+                <Dropdown label="Range Revenue" value={fRevenue} onChange={setFRevenue} options={[["all", "Semua"], ["lt1", "< Rp 1 T"], ["1-10", "Rp 1 – 10 T"], ["10-50", "Rp 10 – 50 T"], ["50-100", "Rp 50 – 100 T"], ["gt100", "> Rp 100 T"]]} />
+                <RangeFilter label="Range Skor Kesehatan" min={hMin} max={hMax} setMin={setHMin} setMax={setHMax} />
+                <RangeFilter label="Range Indeks Risiko" min={rMin} max={rMax} setMin={setRMin} setMax={setRMax} />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
+                  <button onClick={resetFilters} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)" }}>Reset</button>
                   <Button variant="primary" size="sm" onClick={() => setFilterOpen(false)}>Terapkan</Button>
                 </div>
               </div>
@@ -700,7 +746,6 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
         </div>
       </div>
 
-      {/* ---- EMPTY STATE ---- */}
       {cases.length === 0 && view === "table" && (
         <div style={{ border: "1px dashed var(--border-strong)", borderRadius: "var(--radius-lg)", background: "var(--surface)", padding: "56px 24px", textAlign: "center" }}>
           <div style={{ width: 56, height: 56, borderRadius: 14, background: "var(--grad-blade)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}><Icon n="folder-open" s={26} /></div>
@@ -710,47 +755,47 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
         </div>
       )}
 
-      {/* ---- TABEL (default) ---- */}
       {cases.length > 0 && view === "table" && (
         <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", overflowX: "auto", background: "var(--surface)" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "var(--text-sm)" }}>
             <thead>
               <tr>
-                {["Perusahaan", "Sektor", "Status", "Revenue", "Skor Kesehatan", "Indeks Risiko", "Agen", ""].map((h, i) => (
-                  <th key={i} style={{
-                    textAlign: ["Revenue", "Skor Kesehatan", "Indeks Risiko"].includes(h) ? "right" : "left", padding: "11px 16px", whiteSpace: "nowrap",
-                    fontSize: "var(--text-xs)", fontWeight: 700, letterSpacing: "var(--ls-wide)", textTransform: "uppercase",
-                    color: "var(--text-muted)", background: "var(--bg-subtle)", borderBottom: "1px solid var(--border)",
-                  }}>{h}</th>
-                ))}
+                <Th label="Perusahaan" k="company" />
+                <Th label="Indeks Case" k="index" />
+                <Th label="Ticker" k="ticker" />
+                <Th label="Sektor" k="sector" />
+                <Th label="Kategori" k="status" />
+                <Th label="Revenue" k="revenue" align="right" />
+                <Th label="Skor Kesehatan" k="health" align="right" />
+                <Th label="Indeks Risiko" k="risk" align="right" />
+                <Th label="Data Terakhir" k="updated" />
+                <Th label="Agen" />
+                <Th label="" />
               </tr>
             </thead>
             <tbody>
-              {noResults && (
-                <tr><td colSpan={8} style={{ padding: "40px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Tidak ada case yang cocok dengan pencarian atau filter.</td></tr>
-              )}
-              {filtered.map((c) => (
-                <tr key={c.id} onClick={() => onOpen(c)} style={{ cursor: "pointer", transition: "background var(--dur-fast) var(--ease-standard)" }}
+              {noResults && (<tr><td colSpan={11} style={{ padding: "40px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Tidak ada case yang cocok dengan pencarian atau filter.</td></tr>)}
+              {sorted.map((c) => (
+                <tr key={c.id} onClick={() => onOpen(c)} style={{ cursor: "pointer" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-sunken)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                   <td style={cell}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <CaseLogo c={c} size={38} radius={9} />
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)", letterSpacing: "-0.01em" }}>{c.company}</div>
-                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{c.id}</div>
-                      </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                      <CaseLogo c={c} size={34} radius={8} />
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)", letterSpacing: "-0.01em", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>{c.company}</div>
                     </div>
                   </td>
-                  <td style={{ ...cell, color: "var(--text-body)" }}>{c.sector}</td>
+                  <td style={{ ...cell, fontFamily: "var(--font-mono)", fontSize: 11.5, color: "var(--text-muted)" }}>{caseIndex(c)}</td>
+                  <td style={cell}><span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: "var(--accent-hover)", background: "var(--accent-quiet)", padding: "2px 8px", borderRadius: 6 }}>{caseTicker(c)}</span></td>
+                  <td style={{ ...cell, color: "var(--text-body)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }} title={c.sector}>{c.sector}</td>
                   <td style={cell}><Badge tone="brand" size="sm">{c.status}</Badge></td>
-                  <td style={{ ...cell, textAlign: "right" }}><span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--text-strong)" }}>{c.revenue}</span></td>
+                  <td style={{ ...cell, textAlign: "right" }}><span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: "var(--text-strong)" }}>{revDisplay(c)}</span></td>
                   <td style={{ ...cell, textAlign: "right" }}><ScorePill v={finScore(c)} color={healthColor(finScore(c))} /></td>
                   <td style={{ ...cell, textAlign: "right" }}><ScorePill v={rskScore(c)} color={riskColor(rskScore(c), rskLevel(c))} /></td>
+                  <td style={{ ...cell, color: "var(--text-muted)", fontSize: 12.5 }}>{fmtDate(lastAct(c))}</td>
                   <td style={cell}><AgentDots agents={c.agents} /></td>
-                  <td style={{ ...cell, textAlign: "right", whiteSpace: "nowrap" }}>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete && onDelete(c); }} title="Hapus case" aria-label="Hapus case"
-                      style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", padding: 4, marginRight: 6, display: "inline-flex", verticalAlign: "middle", borderRadius: 6 }}
+                  <td style={{ ...cell, textAlign: "right" }}>
+                    <button onClick={(e) => { e.stopPropagation(); onDelete && onDelete(c); }} title="Hapus case" aria-label="Hapus case" style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", padding: 4, marginRight: 6, display: "inline-flex", verticalAlign: "middle", borderRadius: 6 }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = "var(--negative-600)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-faint)"; }}><Icon n="trash-2" s={15} /></button>
                     <Icon n="chevron-right" s={16} style={{ color: "var(--text-faint)", verticalAlign: "middle" }} />
@@ -762,15 +807,9 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
         </div>
       )}
 
-      {/* ---- KARTU ---- */}
       {view === "card" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
-          <button onClick={onNew} style={{
-            minHeight: 168, border: "1.5px dashed var(--border-strong)", borderRadius: "var(--radius-lg)",
-            background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", gap: 10, color: "var(--text-muted)",
-            fontFamily: "var(--font-sans)", transition: "all var(--dur-base) var(--ease-standard)",
-          }}
+          <button onClick={onNew} style={{ minHeight: 190, border: "1.5px dashed var(--border-strong)", borderRadius: "var(--radius-lg)", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "var(--text-muted)", fontFamily: "var(--font-sans)" }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent-hover)"; e.currentTarget.style.background = "var(--accent-quiet)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-strong)"; e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "transparent"; }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--grad-blade)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon n="plus" s={22} /></div>
@@ -778,28 +817,26 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
             <span style={{ fontSize: 12 }}>Analisis perusahaan baru</span>
           </button>
 
-          {noResults && (
-            <div style={{ gridColumn: "1/-1", padding: "36px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Tidak ada case yang cocok dengan pencarian atau filter.</div>
-          )}
-          {filtered.map((c) => (
+          {noResults && (<div style={{ gridColumn: "1/-1", padding: "36px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Tidak ada case yang cocok dengan pencarian atau filter.</div>)}
+          {sorted.map((c) => (
             <Card key={c.id} interactive onClick={() => onOpen(c)} padding="none" style={{ overflow: "hidden" }}>
               <div style={{ padding: 18 }}>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                   <CaseLogo c={c} size={44} radius={11} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete && onDelete(c); }} title="Hapus case" aria-label="Hapus case"
-                      style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", padding: 4, display: "inline-flex", borderRadius: 6 }}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--accent-hover)", background: "var(--accent-quiet)", padding: "2px 8px", borderRadius: 6 }}>{caseTicker(c)}</span>
+                    <button onClick={(e) => { e.stopPropagation(); onDelete && onDelete(c); }} title="Hapus case" aria-label="Hapus case" style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--text-faint)", padding: 4, display: "inline-flex", borderRadius: 6 }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = "var(--negative-600)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-faint)"; }}><Icon n="trash-2" s={15} /></button>
                   </div>
                 </div>
                 <div style={{ marginTop: 14 }}>
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.02em" }}>{c.id}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)", marginTop: 3, letterSpacing: "-0.01em", lineHeight: 1.25 }}>{c.company}</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.02em" }}>{caseIndex(c)}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-strong)", marginTop: 3, letterSpacing: "-0.01em", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={c.company}>{c.company}</div>
                 </div>
-                <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-                  <Badge tone="neutral" size="sm">{c.sector}</Badge>
-                  <Badge tone="brand" size="sm">{c.status}</Badge>
+                <div style={{ marginTop: 12 }}>
+                  <div title={c.sector} style={{ fontSize: 12.5, color: "var(--text-body)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.sector}</div>
+                  <div style={{ marginTop: 7 }}><Badge tone="brand" size="sm">{c.status}</Badge></div>
                 </div>
                 <div style={{ display: "flex", gap: 20, marginTop: 14 }}>
                   <div>
@@ -814,7 +851,7 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 18px", borderTop: "1px solid var(--border-subtle)", background: "var(--surface-sunken)" }}>
                 <div>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 600, color: "var(--text-strong)" }}>{c.revenue}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 600, color: "var(--text-strong)" }}>{revDisplay(c)}</span>
                   <span style={{ fontSize: 11, color: "var(--text-faint)", marginLeft: 6 }}>revenue</span>
                 </div>
                 <AgentDots agents={c.agents} />
@@ -826,15 +863,13 @@ function CaseLibrary({ cases, onOpen, onNew, onDelete }) {
     </div>
   );
 }
-
 /* ---------- New Case: name + Data Primer ---------- */
 function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
   const { Card, Input, Select, Button, Badge, Textarea, Alert, Switch } = LibNS;
-  const [step, setStep] = React.useState(1);
   const [company, setCompany] = React.useState("");
   const [autofilled, setAutofilled] = React.useState(false);
   const [filling, setFilling] = React.useState(false);
-  const [form, setForm] = React.useState({ founded: "", sector: "", bidang: "", revenue: "", revenueDate: "", status: "", website: "", logo: null });
+  const [form, setForm] = React.useState({ ticker: "", founded: "", sector: "", bidang: "", revenue: "", revenueDate: "", status: "", website: "", logo: null });
   const [primerDocs, setPrimerDocs] = React.useState([]);
   const [afErr, setAfErr] = React.useState("");
   const AI = window.STX_AI;
@@ -861,7 +896,8 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
     return "Rp " + n.toLocaleString("id-ID");
   };
   const initials = (stripPT(company).slice(0, 3) || "XXX").toUpperCase();
-  const caseId = `Case-${String(nextIndex).padStart(3, "0")}-${initials}`;
+  const tickerCode = (form.ticker || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+  const caseId = `Case-${String(nextIndex).padStart(3, "0")}-${tickerCode || "XXXX"}`;
   const [caseName, setCaseName] = React.useState("");
 
   React.useEffect(refreshIcons);
@@ -882,7 +918,7 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
     setFilling(true); setAfErr("");
     try {
       const r = await AI.analyzePrimer({ company, contextText: ctx, website: form.website });
-      setForm((f) => ({ ...f, founded: r.founded || f.founded, sector: r.sector || f.sector, bidang: r.bidang || f.bidang, revenue: r.revenue || f.revenue, revenueDate: r.revenueDate || f.revenueDate, status: r.status || f.status }));
+      setForm((f) => ({ ...f, ticker: (r.ticker || f.ticker || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4), founded: r.founded || f.founded, sector: r.sector || f.sector, bidang: r.bidang || f.bidang, revenue: r.revenue || f.revenue, revenueDate: r.revenueDate || f.revenueDate, status: r.status || f.status }));
       if (!company && r.company) setCompany(r.company);
       setAutofilled(true);
     } catch (e) {
@@ -900,41 +936,12 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
     </div>
   );
 
-  if (step === 1) {
-    return (
-      <div style={{ maxWidth: 620, margin: "0 auto" }}>
-        <Card padding="xl">
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Langkah 1 dari 2</div>
-          <h2 style={{ fontSize: 24, marginTop: 6 }}>Buat Case Baru</h2>
-          <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 6, marginBottom: 22 }}>Indeks case dibuat otomatis dari nomor urut dan tiga huruf pertama nama perusahaan (tanpa "PT").</p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            {field("Nama perusahaan", <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="mis. PT Astra Sejahtera Tbk" />, "Awalan \"PT\" diabaikan saat membuat indeks.")}
-            <div style={{ display: "flex", gap: 14, alignItems: "flex-end" }}>
-              <div style={{ flex: 1 }}>
-                {field("Indeks case (otomatis)", <Input value={caseId} disabled prefix={<Icon n="hash" s={15} />} />)}
-              </div>
-              <div style={{ flex: 1.4 }}>
-                {field("Nama case (dapat diedit)", <Input value={caseName} onChange={(e) => setCaseName(e.target.value)} placeholder={company ? stripPT(company) : "Perusahaan"} />)}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28 }}>
-            <Button variant="ghost" onClick={onCancel}>Batal</Button>
-            <Button variant="primary" iconRight={<Icon n="arrow-right" s={16} />} disabled={!company.trim()} onClick={() => setStep(2)}>Lanjut ke Data Primer</Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div style={{ maxWidth: 760, margin: "0 auto" }}>
       <Card padding="xl">
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Langkah 2 dari 2</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}>Case Baru</div>
             <h2 style={{ fontSize: 24, marginTop: 6 }}>Data Primer Perusahaan</h2>
           </div>
           <Badge tone="brand"><span style={{ fontFamily: "var(--font-mono)" }}>{caseId}</span></Badge>
@@ -985,20 +992,22 @@ function NewCaseFlow({ nextIndex, onCancel, onCreate }) {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16 }}>
-          {field("Nama perusahaan", <Input value={company} onChange={(e) => setForm && setCompany(e.target.value)} />)}
+          <div style={{ gridColumn: "1 / -1" }}>{field("Nama case (dapat diedit)", <Input value={caseName} onChange={(e) => setCaseName(e.target.value)} placeholder={company ? stripPT(company) : "Perusahaan"} />)}</div>
+          {field("Nama perusahaan", <Input value={company} onChange={(e) => setCompany(e.target.value)} />)}
+          {field("Kode Ticker (4 huruf)", <Input value={tickerCode} onChange={(e) => setForm({ ...form, ticker: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) })} placeholder="mis. BBRI" prefix={<Icon n="tag" s={14} />} />, "Terisi otomatis via Isi Otomatis; dapat diedit. Menentukan indeks case.")}
           {field("Tahun berdiri", <Input value={form.founded} onChange={(e) => setForm({ ...form, founded: e.target.value })} placeholder="mis. 1994" />)}
           {field("Sektor Industri (BI)", <Select value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="Pilih sektor (klasifikasi BI)" options={(window.STX_DATA.sectorsBI || []).concat(form.sector && !(window.STX_DATA.sectorsBI || []).includes(form.sector) ? [form.sector] : [])} />)}
           {field("Bidang usaha", <Select value={form.bidang} onChange={(e) => setForm({ ...form, bidang: e.target.value })} placeholder="Pilih bidang usaha" options={(window.STX_DATA.bidangUsaha || []).concat(form.bidang && !(window.STX_DATA.bidangUsaha || []).includes(form.bidang) ? [form.bidang] : [])} />)}
           {field("Revenue tahunan", <Input value={form.revenue} onChange={(e) => setForm({ ...form, revenue: e.target.value })} prefix="Rp" placeholder="4.820.000.000.000" />)}
           {field("Per bulan / tahun", <Input type="month" value={form.revenueDate} onChange={(e) => setForm({ ...form, revenueDate: e.target.value })} />, "Periode acuan angka revenue.")}
           <div style={{ gridColumn: "1 / -1" }}>
-            {field("Status perusahaan", <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} placeholder="Pilih status" options={["BUMN", "Multinasional", "Swasta Nasional", "SME", "UMKM"]} />)}
+            {field("Kategori Perusahaan", <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} placeholder="Pilih kategori" options={["BUMN", "Multinasional", "Swasta Nasional", "SME", "UMKM"]} />)}
           </div>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 26 }}>
-          <Button variant="ghost" iconLeft={<Icon n="arrow-left" s={16} />} onClick={() => setStep(1)}>Kembali</Button>
-          <Button variant="primary" iconLeft={<Icon n="check" s={16} />} onClick={() => onCreate({ id: caseId, name: caseName || (company + " — Due Diligence"), company, initials, logoColor: "#0E7C8B", logo: form.logo || null, sector: form.sector || "—", bidang: form.bidang || "", status: form.status || "—", founded: form.founded, website: form.website || "", revenue: fmtRevenue(form.revenue), revenueDate: form.revenueDate, docText: primerDocs, updated: "baru saja", agents: [], analysis: {}, health: "Sehat" })}>Simpan Data Primer</Button>
+          <Button variant="ghost" onClick={onCancel}>Batal</Button>
+          <Button variant="primary" iconLeft={<Icon n="check" s={16} />} disabled={!company.trim()} onClick={() => onCreate({ id: caseId, seq: nextIndex, ticker: tickerCode || "XXXX", name: caseName || (company + " — Due Diligence"), company, initials, logoColor: "#0E7C8B", logo: form.logo || null, sector: form.sector || "—", bidang: form.bidang || "", status: form.status || "—", founded: form.founded, website: form.website || "", revenue: fmtRevenue(form.revenue), revenueDate: form.revenueDate, docText: primerDocs, updated: "baru saja", updatedAt: Date.now(), agents: [], analysis: {}, health: "Sehat" })}>Simpan Data Primer</Button>
         </div>
       </Card>
     </div>
@@ -1075,7 +1084,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
   const [fillErr, setFillErr] = React.useState("");
   const editLogoRef = React.useRef(null);
   const openEdit = () => {
-    setEf({ company: caseCtx.company || "", founded: caseCtx.founded || "", sector: caseCtx.sector || "", bidang: caseCtx.bidang || "", status: caseCtx.status || "", revenue: caseCtx.revenue || "", revenueDate: caseCtx.revenueDate || "", website: caseCtx.website || "", logo: caseCtx.logo || null });
+    setEf({ company: caseCtx.company || "", ticker: caseTicker(caseCtx), founded: caseCtx.founded || "", sector: caseCtx.sector || "", bidang: caseCtx.bidang || "", status: caseCtx.status || "", revenue: caseCtx.revenue || "", revenueDate: caseCtx.revenueDate || "", website: caseCtx.website || "", logo: caseCtx.logo || null });
     setFilling(false); setFillErr(""); setEditing(true);
   };
   // Ambil revenue (Rp Miliar) + tahun terbaru dari hasil Agen Analis Keuangan
@@ -1107,7 +1116,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
     setFilling(true); setFillErr("");
     try {
       const r = await AI.analyzePrimer({ company: ef.company, contextText: ctx, website: ef.website });
-      setEf((p) => ({ ...p, founded: r.founded || p.founded, sector: r.sector || p.sector, bidang: r.bidang || p.bidang, revenue: r.revenue || p.revenue, revenueDate: r.revenueDate || p.revenueDate, status: r.status || p.status, company: (!p.company && r.company) ? r.company : p.company }));
+      setEf((p) => ({ ...p, ticker: (r.ticker || p.ticker || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4), founded: r.founded || p.founded, sector: r.sector || p.sector, bidang: r.bidang || p.bidang, revenue: r.revenue || p.revenue, revenueDate: r.revenueDate || p.revenueDate, status: r.status || p.status, company: (!p.company && r.company) ? r.company : p.company }));
     } catch (e) {
       setFillErr("Update otomatis gagal: " + e.message);
     } finally {
@@ -1122,7 +1131,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
     r.readAsDataURL(f);
   };
   const saveEdit = () => {
-    Object.assign(caseCtx, { company: ef.company, founded: ef.founded, sector: ef.sector, bidang: ef.bidang, status: ef.status, revenue: ef.revenue, revenueDate: ef.revenueDate, website: ef.website, logo: ef.logo, updated: "baru saja" });
+    Object.assign(caseCtx, { company: ef.company, ticker: (ef.ticker || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) || caseTicker(caseCtx), founded: ef.founded, sector: ef.sector, bidang: ef.bidang, status: ef.status, revenue: ef.revenue, revenueDate: ef.revenueDate, website: ef.website, logo: ef.logo, updated: "baru saja", updatedAt: Date.now() });
     setEditing(false); mark(); force();
   };
   const efield = (label, node) => (
@@ -1168,7 +1177,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>{caseCtx.id}</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-muted)" }}>{caseIndex(caseCtx)}</span>
               <Badge tone="brand" size="sm">{caseCtx.status}</Badge>
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-strong)", letterSpacing: "-0.01em", marginTop: 2 }}>{caseCtx.company}</div>
@@ -1287,7 +1296,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
       </div>
 
       {/* Dialog Edit Data Primer */}
-      <Dialog open={editing} onClose={() => setEditing(false)} title="Edit Data Primer" description={caseCtx.id} width={660}
+      <Dialog open={editing} onClose={() => setEditing(false)} title="Edit Data Primer" description={caseIndex(caseCtx)} width={660}
         footer={<><Button variant="secondary" onClick={() => setEditing(false)}>Batal</Button><Button variant="primary" iconLeft={<Icon n="check" s={15} />} onClick={saveEdit}>Simpan Perubahan</Button></>}>
         <div style={{ maxHeight: "58vh", overflowY: "auto", paddingRight: 4 }}>
           {/* Perbarui via AI */}
@@ -1319,6 +1328,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 14 }}>
             {efield("Nama perusahaan", <Input value={ef.company} onChange={(e) => setEf((p) => ({ ...p, company: e.target.value }))} />)}
+            {efield("Kode Ticker (4 huruf) \u2014 menentukan indeks", <Input value={ef.ticker} onChange={(e) => setEf((p) => ({ ...p, ticker: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) }))} prefix={<Icon n="tag" s={14} />} placeholder="mis. BBRI" />)}
             {efield("Tahun berdiri", <Input value={ef.founded} onChange={(e) => setEf((p) => ({ ...p, founded: e.target.value }))} />)}
             {efield("Sektor Industri (BI)", <Select value={ef.sector} onChange={(e) => setEf((p) => ({ ...p, sector: e.target.value }))} placeholder="Pilih sektor (klasifikasi BI)" options={(window.STX_DATA.sectorsBI || []).concat(ef.sector && !(window.STX_DATA.sectorsBI || []).includes(ef.sector) ? [ef.sector] : [])} />)}
             {efield("Bidang usaha", <Select value={ef.bidang} onChange={(e) => setEf((p) => ({ ...p, bidang: e.target.value }))} placeholder="Pilih bidang usaha" options={(window.STX_DATA.bidangUsaha || []).concat(ef.bidang && !(window.STX_DATA.bidangUsaha || []).includes(ef.bidang) ? [ef.bidang] : [])} />)}
@@ -1336,7 +1346,7 @@ function CaseWorkspace({ caseCtx, docs, agents, onRunAgent, dirty, jobs, onStart
             ))}
             {efield("Per bulan / tahun", <Input type="month" value={ef.revenueDate} onChange={(e) => setEf((p) => ({ ...p, revenueDate: e.target.value }))} />)}
             <div style={{ gridColumn: "1 / -1" }}>
-              {efield("Status perusahaan", <Select value={ef.status} onChange={(e) => setEf((p) => ({ ...p, status: e.target.value }))} options={["BUMN", "Multinasional", "Swasta Nasional", "SME", "UMKM"]} />)}
+              {efield("Kategori Perusahaan", <Select value={ef.status} onChange={(e) => setEf((p) => ({ ...p, status: e.target.value }))} options={["BUMN", "Multinasional", "Swasta Nasional", "SME", "UMKM"]} />)}
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               {efield("Website perusahaan", <Input value={ef.website} onChange={(e) => setEf((p) => ({ ...p, website: e.target.value }))} prefix={<Icon n="globe" s={15} />} placeholder="mis. perusahaan.co.id" />)}
@@ -3460,7 +3470,7 @@ function App() {
     setOpenCases((prev) => (prev.some((x) => x.id === c.id) ? prev : [...prev, c]));
     setActiveCaseId(c.id); setView("workspace");
   };
-  const markDirty = (id) => { setDirtyIds((p) => ({ ...p, [id]: true })); persist(); };
+  const markDirty = (id) => { const c = (casesRef.current || []).find((x) => x.id === id); if (c) c.updatedAt = Date.now(); setDirtyIds((p) => ({ ...p, [id]: true })); persist(); };
   const agentHist = (c, agent) => {
     const a = (c && c.analysis && c.analysis[agent]) || null;
     let arr = (c && c.history && c.history[agent]) || [];
@@ -3512,10 +3522,10 @@ function App() {
   // Header config per view
   let title = "Pustaka Case", subtitle = `${cases.length} case tersimpan`, actions = null, onBack = null;
   if (view === "newcase") { title = "Case Baru"; subtitle = "Buat analisis perusahaan baru"; onBack = () => setView("library"); }
-  else if (view === "workspace" && activeCase) { title = activeCase.name; subtitle = activeCase.id; }
+  else if (view === "workspace" && activeCase) { title = activeCase.name; subtitle = caseIndex(activeCase); }
   else if (view.startsWith("agent-") && activeCase) {
     const a = D.agents.find((x) => x.id === view.slice(6));
-    title = a.name; subtitle = `${activeCase.company} · ${activeCase.id}`; onBack = () => setView("workspace");
+    title = a.name; subtitle = `${activeCase.company} · ${caseIndex(activeCase)}`; onBack = () => setView("workspace");
   }
   else if (view === "settings") { title = "Pengaturan"; subtitle = "Model AI, akun & ekspor"; }
   else if (view === "library") { actions = <Button variant="primary" size="sm" iconLeft={<Ic n="plus" s={15} />} onClick={() => setView("newcase")}>Case Baru</Button>; }

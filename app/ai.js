@@ -307,6 +307,7 @@
     const sys = "Anda mengekstrak Data Primer perusahaan dari dokumen. Keluarkan HANYA JSON valid (tanpa markdown). Bahasa Indonesia (angka format Indonesia, desimal koma & ribuan titik). Kosongkan (\"\") field yang tidak dapat ditemukan; jangan mengarang.";
     const schema = `{
  "company":"nama resmi perusahaan bila terbaca",
+ "ticker":"kode ticker bursa 4 huruf KAPITAL",
  "founded":"tahun berdiri, mis. 1994",
  "sector":"sektor industri (klasifikasi Bank Indonesia)",
  "bidang":"bidang usaha spesifik",
@@ -318,7 +319,7 @@
     if (company) parts.push("Nama sementara: " + company);
     if (website) parts.push("Website: " + website);
     if (contextText) parts.push("DOKUMEN:\n" + contextText.slice(0, 130000));
-    const user = parts.join("\n\n") + `\n\nEkstrak Data Primer sebagai JSON sesuai skema. Keluarkan HANYA JSON.\n${schema}`;
+    const user = parts.join("\n\n") + `\n\nUntuk "ticker": bila perusahaan TERBUKA (tercatat di Bursa Efek Indonesia), isi kode ticker resminya (4 huruf KAPITAL, mis. BBRI, TLKM, ASII). Bila TIDAK terbuka atau tidak ditemukan, REKOMENDASIKAN satu kode ticker 4 huruf KAPITAL terbaik yang mencerminkan nama perusahaan.\n\nEkstrak Data Primer sebagai JSON sesuai skema. Keluarkan HANYA JSON.\n${schema}`;
     const raw = await callClaude({ system: sys, messages: [{ role: "user", content: user }], max_tokens: 3000 });
     return extractJSON(raw);
   }
