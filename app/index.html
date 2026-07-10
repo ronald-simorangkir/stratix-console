@@ -3545,10 +3545,14 @@ function App() {
   const selectCase = (id) => { setActiveCaseId(id); setView("workspace"); };
   const loadDemo = () => {
     const dc = window.STX_DATA && window.STX_DATA.demoCase; if (!dc) return;
-    const exists = (casesRef.current || []).find((c) => c.id === dc.id);
-    if (exists) { openCase(exists); return; }
-    const copy = JSON.parse(JSON.stringify(dc)); copy.updatedAt = Date.now();
-    const next = [copy, ...(casesRef.current || [])]; casesRef.current = next; setCases(next); openCase(copy); persist();
+    const fresh = JSON.parse(JSON.stringify(dc)); fresh.updatedAt = Date.now();
+    const list = casesRef.current || [];
+    const idx = list.findIndex((c) => c.id === dc.id);
+    const next = idx >= 0 ? list.map((c, i) => (i === idx ? fresh : c)) : [fresh, ...list];
+    casesRef.current = next; setCases(next);
+    setOpenCases((oc) => oc.map((c) => (c.id === dc.id ? fresh : c)));
+    setDirtyIds((prev) => { const q = Object.assign({}, prev); delete q[dc.id]; return q; });
+    openCase(fresh); persist();
   };
   const nav = (v) => setView(v);
   const finishTutorial = () => { try { localStorage.setItem("stx_tutorial_seen", "1"); } catch (e) {} setTutorialOpen(false); if (tutorialFresh) { setTutorialFresh(false); setSettingsTab("ai"); setView("settings"); } };
