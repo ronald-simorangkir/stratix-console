@@ -3485,7 +3485,18 @@ function App() {
   const persist = React.useCallback(() => { if (window.STX_STORE) window.STX_STORE.saveCases(casesRef.current); }, []);
   React.useEffect(() => {
     if (!window.STX_STORE) return;
-    window.STX_STORE.loadCases().then((saved) => { if (saved && Array.isArray(saved) && saved.length) { casesRef.current = saved; setCases(saved); } });
+    window.STX_STORE.loadCases().then((saved) => {
+      if (saved && Array.isArray(saved) && saved.length) {
+        const dc = window.STX_DATA && window.STX_DATA.demoCase;
+        let changed = false;
+        const migrated = saved.map((c) => {
+          if (dc && (c.id === dc.id || c.demo)) { changed = true; const fresh = JSON.parse(JSON.stringify(dc)); fresh.updatedAt = c.updatedAt || Date.now(); return fresh; }
+          return c;
+        });
+        casesRef.current = migrated; setCases(migrated);
+        if (changed && window.STX_STORE) window.STX_STORE.saveCases(migrated);
+      }
+    });
   }, []);
   React.useEffect(() => {
     if (!user) return;
