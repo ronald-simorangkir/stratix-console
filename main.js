@@ -32,19 +32,13 @@ if (!gotLock) {
     win.loadFile(path.join(__dirname, 'app', 'index.html'));
     win.once('ready-to-show', () => win.show());
 
-    // Badge versi build yang SEDANG berjalan (dibaca dari app.getVersion()) —
-    // membantu memastikan self-update sudah menarik build terbaru.
+    // Suntik versi build yang SEDANG berjalan ke renderer (app.getVersion()),
+    // supaya UI bisa menampilkannya di footer dekat identitas pengguna.
     win.webContents.on('did-finish-load', () => {
       try {
         win.webContents.executeJavaScript(
-          '(function(){try{var b=document.getElementById("stx-ver");' +
-          'if(!b){b=document.createElement("div");b.id="stx-ver";document.body.appendChild(b);}' +
-          'b.textContent="STRATIX v"+' + JSON.stringify(app.getVersion()) + ';' +
-          'b.setAttribute("style","position:fixed;left:8px;bottom:8px;z-index:99999;' +
-          'font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#5E718E;' +
-          'background:rgba(255,255,255,.72);border:1px solid rgba(14,37,71,.12);' +
-          'border-radius:6px;padding:3px 7px;pointer-events:none;backdrop-filter:blur(4px);");' +
-          '}catch(e){}})();'
+          'window.__appVersion=' + JSON.stringify(app.getVersion()) + ';' +
+          'try{document.dispatchEvent(new Event("stx-version"));}catch(e){}'
         ).catch(function(){});
       } catch (e) {}
     });

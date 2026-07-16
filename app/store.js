@@ -80,7 +80,7 @@
       email = String(email || "").trim().toLowerCase();
       var users = readUsers(); var u = users[email];
       if (!u || u.pass !== hash(password)) throw new Error("Email atau kata sandi salah.");
-      var session = { name: u.name, email: u.email, provider: "email" };
+      var session = { name: u.name, email: u.email, provider: "email", avatar: u.avatar || null };
       try { localStorage.setItem(SKEY, JSON.stringify(session)); } catch (e) {}
       return session;
     },
