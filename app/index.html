@@ -1756,6 +1756,75 @@ function DeckGenIndicator() {
 }
 Object.assign(window, { PitchDeckModal, DeckGenIndicator });
 
+function stxNumID(n, dec){ if(n==null||isNaN(n)) return "\u2013"; return Number(n).toLocaleString("id-ID",{minimumFractionDigits:dec||0,maximumFractionDigits:dec||0}); }
+function stxPad2(n){ return String(n).padStart(2,"0"); }
+function stxAgentFilename(caseObj, code){
+  var t=((caseObj&&(caseObj.ticker||""))+"").toUpperCase().replace(/[^A-Z0-9]/g,""); if(!t) t="NA";
+  var d=new Date();
+  return "STRATIX_"+t+"_"+code+"_"+stxPad2(d.getFullYear()%100)+stxPad2(d.getMonth()+1)+stxPad2(d.getDate())+"_"+stxPad2(d.getHours())+stxPad2(d.getMinutes());
+}
+function stxLineChartSVG(labels, series){
+  var W=640,H=300,L=64,R=18,T=42,B=44,pw=W-L-R,ph=H-T-B;
+  var all=[]; series.forEach(function(sr){(sr.data||[]).forEach(function(v){if(v!=null&&!isNaN(v))all.push(+v);});});
+  var max=Math.max.apply(null,all.concat([1])); var min=Math.min.apply(null,all.concat([0])); if(min>0)min=0; max=max*1.08;
+  var n=labels.length, xOf=function(i){return L+(n<=1?pw/2:pw*i/(n-1));}, yOf=function(v){return T+ph-ph*(v-min)/((max-min)||1);};
+  var g="",xl=""; for(var k=0;k<=4;k++){var gv=min+(max-min)*k/4,gy=yOf(gv); g+="<line x1='"+L+"' y1='"+gy.toFixed(1)+"' x2='"+(W-R)+"' y2='"+gy.toFixed(1)+"' stroke='#E8EDF3'/>"; g+="<text x='"+(L-8)+"' y='"+(gy+3).toFixed(1)+"' font-size='9' fill='#8A99AB' text-anchor='end' font-family='monospace'>"+stxNumID(Math.round(gv))+"</text>";}
+  labels.forEach(function(lb,i){xl+="<text x='"+xOf(i).toFixed(1)+"' y='"+(H-B+18)+"' font-size='9.5' fill='#5E718E' text-anchor='middle'>"+lb+"</text>";});
+  var ln="",lg=""; series.forEach(function(sr,si){
+    var pts=(sr.data||[]).map(function(v,i){return (v==null||isNaN(v))?null:(xOf(i).toFixed(1)+","+yOf(+v).toFixed(1));}).filter(Boolean).join(" ");
+    ln+="<polyline points='"+pts+"' fill='none' stroke='"+sr.color+"' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/>";
+    (sr.data||[]).forEach(function(v,i){if(v!=null&&!isNaN(v))ln+="<circle cx='"+xOf(i).toFixed(1)+"' cy='"+yOf(+v).toFixed(1)+"' r='2.8' fill='#fff' stroke='"+sr.color+"' stroke-width='1.8'/>";});
+    var lx=L+si*180; lg+="<rect x='"+lx+"' y='14' width='14' height='4' rx='2' fill='"+sr.color+"'/><text x='"+(lx+20)+"' y='19' font-size='10.5' fill='#22303F' font-weight='600'>"+sr.name+"</text>";
+  });
+  return "<svg viewBox='0 0 "+W+" "+H+"' width='100%' xmlns='http://www.w3.org/2000/svg' style='font-family:Plus Jakarta Sans,Segoe UI,sans-serif;'>"+g+lg+ln+xl+"</svg>";
+}
+function stxBarChartSVG(labels, series, opts){
+  opts=opts||{}; var suf=opts.suffix||""; var W=640,H=300,L=52,R=18,T=42,B=44,pw=W-L-R,ph=H-T-B;
+  var all=[]; series.forEach(function(sr){(sr.data||[]).forEach(function(v){if(v!=null&&!isNaN(v))all.push(+v);});});
+  var max=Math.max.apply(null,all.concat([1]))*1.2, min=0, n=labels.length, groupW=pw/n, barW=Math.min(24,(groupW*0.66)/series.length);
+  var yOf=function(v){return T+ph-ph*(v-min)/((max-min)||1);};
+  var g="",xl="",bars=""; for(var k=0;k<=4;k++){var gv=max*k/4,gy=yOf(gv); g+="<line x1='"+L+"' y1='"+gy.toFixed(1)+"' x2='"+(W-R)+"' y2='"+gy.toFixed(1)+"' stroke='#E8EDF3'/>"; g+="<text x='"+(L-8)+"' y='"+(gy+3).toFixed(1)+"' font-size='9' fill='#8A99AB' text-anchor='end' font-family='monospace'>"+stxNumID(gv,gv<10?1:0)+"</text>";}
+  labels.forEach(function(lb,i){var gx=L+groupW*i+groupW/2,tot=barW*series.length+4*(series.length-1);
+    series.forEach(function(sr,si){var v=(sr.data||[])[i]; if(v==null||isNaN(v))return; var bx=gx-tot/2+si*(barW+4),by=yOf(+v),bh=T+ph-by;
+      bars+="<rect x='"+bx.toFixed(1)+"' y='"+by.toFixed(1)+"' width='"+barW+"' height='"+Math.max(0,bh).toFixed(1)+"' rx='2' fill='"+sr.color+"'/>";
+      bars+="<text x='"+(bx+barW/2).toFixed(1)+"' y='"+(by-4).toFixed(1)+"' font-size='8' fill='#22303F' text-anchor='middle' font-family='monospace'>"+stxNumID(+v,1)+suf+"</text>";});
+    xl+="<text x='"+gx.toFixed(1)+"' y='"+(H-B+18)+"' font-size='9.5' fill='#5E718E' text-anchor='middle'>"+lb+"</text>";});
+  var lg=""; series.forEach(function(sr,si){var lx=L+si*180; lg+="<rect x='"+lx+"' y='12' width='12' height='12' rx='3' fill='"+sr.color+"'/><text x='"+(lx+18)+"' y='22' font-size='10.5' fill='#22303F' font-weight='600'>"+sr.name+"</text>";});
+  return "<svg viewBox='0 0 "+W+" "+H+"' width='100%' xmlns='http://www.w3.org/2000/svg' style='font-family:Plus Jakarta Sans,Segoe UI,sans-serif;'>"+g+lg+bars+xl+"</svg>";
+}
+function stxDonutSVG(percent, sub, color, size){
+  size=size||150; var cx=size/2,cy=size/2,r=size*0.36,sw=size*0.13,C=2*Math.PI*r,p=Math.max(0,Math.min(100,percent||0)),dash=C*p/100; color=color||"#12A3B4";
+  return "<svg viewBox='0 0 "+size+" "+size+"' width='"+size+"' xmlns='http://www.w3.org/2000/svg' style='font-family:Plus Jakarta Sans,Segoe UI,sans-serif;flex-shrink:0;'>"
+   +"<circle cx='"+cx+"' cy='"+cy+"' r='"+r+"' fill='none' stroke='#EAEFF4' stroke-width='"+sw+"'/>"
+   +"<circle cx='"+cx+"' cy='"+cy+"' r='"+r+"' fill='none' stroke='"+color+"' stroke-width='"+sw+"' stroke-linecap='round' stroke-dasharray='"+dash.toFixed(1)+" "+(C-dash).toFixed(1)+"' transform='rotate(-90 "+cx+" "+cy+")'/>"
+   +"<text x='"+cx+"' y='"+(cy+size*0.02)+"' font-size='"+(size*0.28)+"' font-weight='800' fill='#0E2547' text-anchor='middle' font-family='monospace'>"+Math.round(p)+"</text>"
+   +"<text x='"+cx+"' y='"+(cy+size*0.19)+"' font-size='"+(size*0.093)+"' fill='#5E718E' text-anchor='middle'>"+(sub||"")+"</text></svg>";
+}
+function stxScaleBarSVG(value, min, max, opts){
+  opts=opts||{}; var W=560,H=40,L=8,R=8,y=8,h=11,tw=W-L-R,pos=(value-min)/((max-min)||1); pos=Math.max(0,Math.min(1,pos)); var mx=L+tw*pos,color=opts.color||"#0E7C8B",s="";
+  s+="<rect x='"+L+"' y='"+y+"' width='"+tw+"' height='"+h+"' rx='5.5' fill='#EAEFF4'/>";
+  (opts.thresholds||[]).forEach(function(t){var tp=(t-min)/((max-min)||1); tp=Math.max(0,Math.min(1,tp)); var xx=L+tw*tp; s+="<line x1='"+xx.toFixed(1)+"' y1='"+(y-3)+"' x2='"+xx.toFixed(1)+"' y2='"+(y+h+3)+"' stroke='#94A3B8' stroke-dasharray='2 2'/>";});
+  s+="<rect x='"+L+"' y='"+y+"' width='"+(tw*pos).toFixed(1)+"' height='"+h+"' rx='5.5' fill='"+color+"' opacity='0.85'/>";
+  s+="<circle cx='"+mx.toFixed(1)+"' cy='"+(y+h/2)+"' r='6.5' fill='#fff' stroke='"+color+"' stroke-width='2.5'/>";
+  s+="<text x='"+L+"' y='"+(y+h+15)+"' font-size='8.5' fill='#8A99AB' font-family='monospace'>"+(opts.minLabel||min)+"</text>";
+  s+="<text x='"+(W-R)+"' y='"+(y+h+15)+"' font-size='8.5' fill='#8A99AB' text-anchor='end' font-family='monospace'>"+(opts.maxLabel||max)+"</text>";
+  return "<svg viewBox='0 0 "+W+" "+H+"' width='100%' xmlns='http://www.w3.org/2000/svg'>"+s+"</svg>";
+}
+function stxRiskMatrixSVG(flags){
+  var cell=50,gap=4,pad=36,N=5,gw=N*cell+(N-1)*gap,W=pad+gw+8,H=pad+gw+34,counts={};
+  (flags||[]).forEach(function(f){var im=+f.impact,lk=+f.likelihood; if(im>=1&&im<=5&&lk>=1&&lk<=5){var k=im+"-"+lk; counts[k]=(counts[k]||0)+1;}});
+  function sev(im,lk){var v=im*lk; if(v>=15)return "#DC2626"; if(v>=9)return "#F97316"; if(v>=5)return "#F59E0B"; return "#22C55E";}
+  var svg="";
+  for(var row=0;row<N;row++){var im=N-row;
+    for(var col=0;col<N;col++){var lk=col+1,x=pad+col*(cell+gap),yy=pad+row*(cell+gap),cnt=counts[im+"-"+lk]||0,base=sev(im,lk),fill=cnt>0?base:(base+"26");
+      svg+="<rect x='"+x+"' y='"+yy+"' width='"+cell+"' height='"+cell+"' rx='6' fill='"+fill+"' stroke='#fff' stroke-width='1.5'/>";
+      if(cnt>0) svg+="<text x='"+(x+cell/2)+"' y='"+(yy+cell/2+6)+"' font-size='17' font-weight='800' fill='#fff' text-anchor='middle' font-family='monospace'>"+cnt+"</text>";}
+    svg+="<text x='"+(pad-8)+"' y='"+(pad+row*(cell+gap)+cell/2+4)+"' font-size='11' fill='#5E718E' text-anchor='end' font-family='monospace'>"+im+"</text>";}
+  for(var c=0;c<N;c++) svg+="<text x='"+(pad+c*(cell+gap)+cell/2)+"' y='"+(pad+gw+18)+"' font-size='11' fill='#5E718E' text-anchor='middle' font-family='monospace'>"+(c+1)+"</text>";
+  svg+="<text x='"+(pad+gw/2)+"' y='"+(H-3)+"' font-size='10.5' fill='#0E2547' text-anchor='middle' font-weight='700'>Kemungkinan \u2192</text>";
+  svg+="<text x='14' y='"+(pad+gw/2)+"' font-size='10.5' fill='#0E2547' text-anchor='middle' font-weight='700' transform='rotate(-90 14 "+(pad+gw/2)+")'>Dampak \u2192</text>";
+  return "<svg viewBox='0 0 "+W+" "+H+"' width='"+W+"' xmlns='http://www.w3.org/2000/svg' style='font-family:Plus Jakarta Sans,Segoe UI,sans-serif;max-width:100%;'>"+svg+"</svg>";
+}
 function stxReportShell(title, bodyHtml) {
   return `<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>${title}</title>
   <style>
@@ -1765,7 +1834,14 @@ function stxReportShell(title, bodyHtml) {
     .stx-h2{font-size:15px;color:#0E2547;border-bottom:2px solid #12A3B4;padding-bottom:5px;margin:24px 0 12px;page-break-after:avoid;}
     table{border-collapse:collapse;width:100%;}
     .mono{font-family:'IBM Plex Mono','Courier New',monospace;}
-    .card{border:1px solid #E2E8F0;border-radius:8px;padding:11px 13px;margin-bottom:10px;page-break-inside:avoid;}
+    .card{border:1px solid #E2E8F0;border-radius:8px;padding:11px 13px;margin-bottom:10px;break-inside:avoid;page-break-inside:avoid;}
+    .keep,.stx-block{break-inside:avoid;page-break-inside:avoid;}
+    .chartwrap{border:1px solid #E8EDF3;border-radius:10px;padding:12px 14px;margin:0 0 14px;break-inside:avoid;page-break-inside:avoid;}
+    .chartcap{font-size:10px;color:#8A99AB;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px;}
+    h1,h2,h3,.stx-h2{break-after:avoid;page-break-after:avoid;}
+    tr{break-inside:avoid;page-break-inside:avoid;}
+    thead{display:table-header-group;}
+    img,svg{max-width:100%;}
     @page{size:A4;margin:14mm 12mm;}
     @media print{body{padding:0;}}
   </style></head><body>${bodyHtml}</body></html>`;
@@ -1828,6 +1904,15 @@ function printFinanceReport(p) {
       ${c.implication ? `<div style="font-size:11.5px;line-height:1.6;color:#22303F;margin-top:3px;"><b>Implikasi:</b> ${esc(c.implication)}</div>` : ""}
       ${c.rekomendasi ? `<div style="font-size:11.5px;line-height:1.6;color:#0E7C8B;margin-top:3px;"><b>Rekomendasi:</b> ${esc(c.rekomendasi)}</div>` : ""}
     </div>`).join("");
+  var _fin = p.financials || {}, _lab = _fin.labels || [], _ln = _fin.lines || {}, _br = _fin.bars || {}, _h = p.health || {};
+  var _lineC = (_lab.length && (_ln.pendapatan || _ln.ebitda)) ? stxLineChartSVG(_lab, [{ name: "Pendapatan (Rp M)", color: "#0E2547", data: _ln.pendapatan || [] }, { name: "EBITDA (Rp M)", color: "#12A3B4", data: _ln.ebitda || [] }]) : "";
+  var _barC = (_lab.length && (_br.ebitda_margin || _br.net_profit_margin)) ? stxBarChartSVG(_lab, [{ name: "EBITDA Margin", color: "#12A3B4", data: _br.ebitda_margin || [] }, { name: "Net Profit Margin", color: "#E8A13B", data: _br.net_profit_margin || [] }], { suffix: "%" }) : "";
+  var _hc = (_h.score != null) ? (_h.score >= 75 ? "#16A34A" : _h.score >= 50 ? "#F59E0B" : "#DC2626") : "#12A3B4";
+  var _hx = "Skor Kesehatan merangkum likuiditas, solvabilitas, profitabilitas, dan efisiensi arus kas menjadi indeks 0\u2013100. " + (_h.label ? ("Status: <b>" + esc(_h.label) + "</b>. ") : "") + (_h.score >= 75 ? "Fundamental tergolong kuat dan relatif tahan terhadap tekanan." : _h.score >= 50 ? "Fundamental memadai, namun terdapat area yang perlu diperkuat." : "Terdapat kerentanan fundamental yang memerlukan perhatian manajemen.");
+  var chartsHtml = (_lineC || _barC || _h.score != null) ? (`<div class="stx-h2">Visualisasi Kinerja</div>`
+    + (_lineC ? `<div class="chartwrap"><div class="chartcap">Tren Pendapatan &amp; EBITDA (Rp Miliar)</div>${_lineC}</div>` : "")
+    + (_barC ? `<div class="chartwrap"><div class="chartcap">EBITDA Margin &amp; Net Profit Margin (%)</div>${_barC}</div>` : "")
+    + (_h.score != null ? `<div class="chartwrap"><div class="chartcap">Skor Kesehatan Keuangan</div><div style="display:flex;align-items:center;gap:20px;">${stxDonutSVG(_h.score, _h.label || "", _hc, 140)}<div style="flex:1;font-size:11.5px;line-height:1.65;color:#22303F;">${_hx}</div></div></div>` : "")) : "";
   const bodyHtml = `
     <div style="border-bottom:2px solid #0E2547;padding-bottom:14px;margin-bottom:8px;">
       <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#12A3B4;">STRATIX &middot; Laporan Analisis Keuangan</div>
@@ -1838,24 +1923,38 @@ function printFinanceReport(p) {
     <div class="stx-h2">Ringkasan Indikator</div>
     <table style="table-layout:fixed;margin-bottom:8px;"><tr>${kpiCards}</tr></table>
     ${ratioRows ? `<table style="margin-top:12px;"><tr style="background:#0E2547;color:#fff;"><th style="padding:6px 10px;font-size:11px;text-align:left;">Rasio</th><th style="padding:6px 10px;font-size:11px;text-align:left;">Nilai</th><th style="padding:6px 10px;font-size:11px;text-align:left;">Benchmark</th><th style="padding:6px 10px;font-size:11px;text-align:left;">Status</th></tr>${ratioRows}</table>` : ""}
+    ${chartsHtml}
     <div class="stx-h2">Uraian Analisis</div>
     ${reviewHtml || '<div style="font-size:12px;color:#6B7C8E;">Ulasan lengkap belum digenerate untuk periode ini. Buka tab \u201cUlasan Lengkap\u201d lalu Generate.</div>'}
     <div class="stx-h2">Red Flags &amp; Concern</div>
     ${flagsHtml || '<div style="font-size:12px;color:#6B7C8E;">Tidak ada red flag tercatat.</div>'}`;
-  openReportPreview("Analisis Keuangan — " + (p.company || "Perusahaan"), bodyHtml);
+  openReportPreview(stxAgentFilename(p.caseCtx, "FINS"), bodyHtml);
 }
 
 function printRiskReport(d, caseCtx) {
   const esc = stxEscape;
   const company = (caseCtx && caseCtx.company) || "Perusahaan";
-  const scoreCard = (title, sc) => sc && sc.value != null ? `
+  const SC_SCALE = {
+    "Beneish M-Score": { min: -3.5, max: 0.5, thresholds: [-1.78], minLabel: "-3,5", maxLabel: "0,5", note: "di bawah -1,78 = indikasi bersih" },
+    "Dechow F-Score": { min: 0, max: 3, thresholds: [1.0], minLabel: "0", maxLabel: "3,0", note: "di atas 1,00 = perlu perhatian" },
+    "Altman Z-Score": { min: 0, max: 5, thresholds: [1.81, 2.99], minLabel: "0", maxLabel: "5,0", note: "<1,81 distress \u00b7 >2,99 aman" },
+    "Piotroski F-Score": { min: 0, max: 9, thresholds: [5], minLabel: "0", maxLabel: "9", note: "makin tinggi makin kuat" },
+  };
+  const scoreCard = (title, sc) => {
+    if (!(sc && sc.value != null)) return `<div class="card" style="color:#6B7C8E;font-size:11px;">${esc(title)} belum tersedia.</div>`;
+    const cfg = SC_SCALE[title];
+    const num = cfg ? parseFloat(String(sc.value).replace(",", ".").replace(/[^0-9.\-]/g, "")) : NaN;
+    const bar = (cfg && !isNaN(num)) ? `<div style="margin-top:7px;">${stxScaleBarSVG(num, cfg.min, cfg.max, { color: "#0E7C8B", thresholds: cfg.thresholds, minLabel: cfg.minLabel, maxLabel: cfg.maxLabel })}<div style="font-size:9px;color:#8A99AB;margin-top:1px;">Skala ${cfg.minLabel}\u2013${cfg.maxLabel} \u00b7 ${cfg.note}</div></div>` : "";
+    return `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
         <div style="font-size:12.5px;font-weight:700;color:#0E2547;">${esc(title)} <span style="font-size:10px;color:#6B7C8E;font-weight:500;">&middot; ${esc(String(sc.year || "-"))}</span></div>
         <div class="mono" style="font-size:15px;font-weight:800;color:#0E2547;">${esc(String(sc.value))} <span style="font-size:11px;font-weight:600;color:#0E7C8B;">${esc(sc.verdict || "")}</span></div>
       </div>
       ${sc.interpretation ? `<div style="font-size:11px;line-height:1.6;color:#22303F;margin-top:5px;">${esc(sc.interpretation)}</div>` : ""}
-    </div>` : `<div class="card" style="color:#6B7C8E;font-size:11px;">${esc(title)} belum tersedia.</div>`;
+      ${bar}
+    </div>`;
+  };
   const flagColor = { critical: "#B91C1C", high: "#DC2626", moderate: "#D97706", low: "#2563EB" };
   const flagsHtml = (d.flags || []).map((f, i) => `
     <div class="card" style="border-left:3px solid ${flagColor[f.level] || "#D97706"};">
@@ -1867,14 +1966,18 @@ function printRiskReport(d, caseCtx) {
       ${f.implication ? `<div style="font-size:11px;line-height:1.6;margin-top:3px;"><b>Implikasi:</b> ${esc(f.implication)}</div>` : ""}
       ${f.action ? `<div style="font-size:11px;line-height:1.6;margin-top:3px;color:#0E7C8B;"><b>Tindak lanjut:</b> ${esc(f.action)}</div>` : ""}
     </div>`).join("");
+  var _lvlColor = /tinggi|high|critical|kritis/i.test(d.level || "") ? "#DC2626" : /sedang|medium|moderate|menengah/i.test(d.level || "") ? "#F59E0B" : "#16A34A";
   const bodyHtml = `
     <div style="border-bottom:2px solid #0E2547;padding-bottom:14px;margin-bottom:8px;">
       <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#12A3B4;">STRATIX &middot; Laporan Risiko & Fraud</div>
       <div style="font-size:22px;font-weight:800;color:#0E2547;margin-top:5px;">${esc(company)}</div>
       <div style="font-size:12px;color:#6B7C8E;margin-top:3px;">${caseCtx && caseCtx.id ? esc(caseCtx.id) + " &middot; " : ""}${new Date().toLocaleString("id-ID")}</div>
-      <div style="font-size:12.5px;color:#22303F;margin-top:10px;line-height:1.6;background:#F1F5F9;border-radius:8px;padding:10px 12px;">
-        <b>Indeks Risiko:</b> ${esc(String(d.score != null ? d.score : "-"))}/100 &middot; Tingkat ${esc(d.level || "-")}. ${esc(d.summary || "")}
-        ${d.recommendation ? `<br><b>Rekomendasi:</b> ${esc(d.recommendation)}` : ""}
+      <div class="keep" style="display:flex;align-items:center;gap:18px;margin-top:10px;background:#F1F5F9;border-radius:10px;padding:12px 14px;">
+        ${d.score != null ? stxDonutSVG(d.score, "Indeks Risiko", _lvlColor, 128) : ""}
+        <div style="flex:1;font-size:12.5px;color:#22303F;line-height:1.65;">
+          <b>Indeks Risiko Fraud:</b> ${esc(String(d.score != null ? d.score : "-"))}/100 &middot; Tingkat ${esc(d.level || "-")}. ${esc(d.summary || "")}
+          ${d.recommendation ? `<br><b>Rekomendasi:</b> ${esc(d.recommendation)}` : ""}
+        </div>
       </div>
     </div>
     <div class="stx-h2">Skor Forensik — Potensi Manipulasi</div>
@@ -1883,9 +1986,11 @@ function printRiskReport(d, caseCtx) {
     <div class="stx-h2">Skor Forensik — Kesehatan Keuangan</div>
     ${scoreCard("Altman Z-Score", d.altman)}
     ${scoreCard("Piotroski F-Score", d.fscore)}
+    <div class="stx-h2">Matriks Risiko (Dampak vs Kemungkinan)</div>
+    <div class="chartwrap" style="text-align:center;">${stxRiskMatrixSVG(d.flags || [])}<div style="font-size:10px;color:#8A99AB;margin-top:6px;">Angka pada sel = jumlah temuan pada kombinasi Dampak \u00d7 Kemungkinan tersebut. Warna mengikuti tingkat keparahan (Dampak \u00d7 Kemungkinan).</div></div>
     <div class="stx-h2">Red Flags &amp; Indikasi Fraud</div>
     ${flagsHtml || '<div style="font-size:12px;color:#6B7C8E;">Tidak ada temuan tercatat.</div>'}`;
-  openReportPreview("Risiko & Fraud — " + company, bodyHtml);
+  openReportPreview(stxAgentFilename(caseCtx, "RISK"), bodyHtml);
 }
 
 function printTransformReport(d, caseCtx) {
@@ -1958,7 +2063,7 @@ function printTransformReport(d, caseCtx) {
     ${(d.projection ? `<div class="stx-h2">Proyeksi Keuangan</div>${projTable("Laba Rugi", d.projection.pnl, d.projection.labels || [])}${projTable("Neraca", d.projection.balance, d.projection.labels || [])}${projTable("Rincian Pendapatan per Jenis Usaha", d.projection.revenueBreakdown, d.projection.labels || [])}` : "")}
     ${innoHtml ? `<div class="stx-h2">Inovasi & Terobosan</div>${innoHtml}` : ""}
     ${reviewHtml ? `<div class="stx-h2">Uraian Strategis</div>${reviewHtml}` : ""}`;
-  openReportPreview("Rencana Transformasi \u2014 " + company, bodyHtml);
+  openReportPreview(stxAgentFilename(caseCtx, "TRAN"), bodyHtml);
 }
 
 
@@ -2044,9 +2149,10 @@ function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyz
   const isFullRange = lo === 0 && hi === years.length - 1;
   const cachedReview = (d.reviewsByPeriod && d.reviewsByPeriod[periodKey]) || (isFullRange && d.review) || null;
   const onExportPDF = () => printFinanceReport({
-    company, caseId: caseCtx && caseCtx.id, periodLabel: periodLabelFull,
+    company, caseCtx, caseId: caseCtx && caseCtx.id, periodLabel: periodLabelFull,
     kpis, ratios: d.ratios, verdict: d.verdict,
     review: cachedReview || d.review, reviewMeta: d.reviewMeta, concerns: d.concerns,
+    financials: d.financials, health: { score: d.healthScore, label: d.healthLabel },
   });
   const [revBusy, setRevBusy] = React.useState(false);
   const [revErr, setRevErr] = React.useState("");
