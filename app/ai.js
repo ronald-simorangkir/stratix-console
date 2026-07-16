@@ -104,12 +104,14 @@
     }
     return res.json();
   }
+  function tempUnsupported(e) { return /temperature/i.test(String((e && e.message) || e)); }
   async function callAnthropic(key, model, system, messages, max_tokens) {
-    const j = await httpJSON("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model, max_tokens, temperature: 0, system, messages }),
-    });
+    const url = "https://api.anthropic.com/v1/messages";
+    const headers = { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" };
+    const base = { model, max_tokens, system, messages };
+    let j;
+    try { j = await httpJSON(url, { method: "POST", headers, body: JSON.stringify(Object.assign({ temperature: 0 }, base)) }); }
+    catch (e) { if (tempUnsupported(e)) { j = await httpJSON(url, { method: "POST", headers, body: JSON.stringify(base) }); } else { throw e; } }
     const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text).join("").trim();
     if (!text && j.stop_reason === "max_tokens") throw new Error("output terpotong oleh limit token");
     return text;
@@ -118,20 +120,19 @@
     const msgs = [{ role: "system", content: system }].concat(messages.map((m) => ({ role: m.role, content: m.content })));
     const body = { model, messages: msgs };
     if (/^o\d/.test(model)) { body.max_completion_tokens = max_tokens; } else { body.max_tokens = max_tokens; body.temperature = 0; }
-    const j = await httpJSON("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "content-type": "application/json", "authorization": "Bearer " + key },
-      body: JSON.stringify(body),
-    });
+    const oaHeaders = { "content-type": "application/json", "authorization": "Bearer " + key };
+    let j;
+    try { j = await httpJSON("https://api.openai.com/v1/chat/completions", { method: "POST", headers: oaHeaders, body: JSON.stringify(body) }); }
+    catch (e) { if (body.temperature !== undefined && tempUnsupported(e)) { delete body.temperature; j = await httpJSON("https://api.openai.com/v1/chat/completions", { method: "POST", headers: oaHeaders, body: JSON.stringify(body) }); } else { throw e; } }
     return ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "").trim();
   }
   async function callGemini(key, model, system, messages, max_tokens) {
     const contents = messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
-    const j = await httpJSON("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(key), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: { maxOutputTokens: max_tokens, temperature: 0 } }),
-    });
+    const gUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(key);
+    const gBody = (withTemp) => ({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: Object.assign({ maxOutputTokens: max_tokens }, withTemp ? { temperature: 0 } : {}) });
+    let j;
+    try { j = await httpJSON(gUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(gBody(true)) }); }
+    catch (e) { if (tempUnsupported(e)) { j = await httpJSON(gUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(gBody(false)) }); } else { throw e; } }
     const c = j.candidates && j.candidates[0];
     return ((c && c.content && c.content.parts || []).map((p) => p.text || "").join("")).trim();
   }
