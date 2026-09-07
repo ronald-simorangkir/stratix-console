@@ -1029,10 +1029,12 @@ Object.assign(window, { CaseLibrary, NewCaseFlow });
 /* global React, Icon, refreshIcons, CompanyMark, SectionTitle */
 const WsNS = window.STRATIXDesignSystem_72cbdd;
 
-const DOC_TYPES = ["Laporan Keuangan/Tahunan", "Presentasi Perusahaan", "Artikel Berita/Media", "Dokumen Lainnya"];
+const DOC_TYPES = ["Laporan Keuangan/Tahunan", "Laporan Keuangan Interim", "Publikasi/Disclosure OJK", "Presentasi Perusahaan", "Artikel Berita/Media", "Dokumen Lainnya"];
 function guessDocType(name, ext) {
   const n = (name || "").toLowerCase(), e = (ext || "").toLowerCase();
-  if (/present|paparan|deck|slide|\bppt\b/.test(n) || e === "pptx" || e === "ppt") return "Presentasi Perusahaan";
+  if (/publikasi|lcr|nsfr|leverage|kpmm|basel|prudensial/.test(n)) return "Publikasi/Disclosure OJK";
+  if (/triwulan|interim|kuartal|semester|tengah tahun|9m[ _\-.]|[ _\-.]1h|[ _\-.]2h|q[1-4][ _\-.]/.test(n)) return "Laporan Keuangan Interim";
+  if (/present|paparan|deck|slide|\bppt\b|analyst|investor/.test(n) || e === "pptx" || e === "ppt") return "Presentasi Perusahaan";
   if (/berita|news|artikel|media|press|siaran|rilis|koran/.test(n)) return "Artikel Berita/Media";
   if (e === "pdf" || e === "xlsx" || e === "xls" || e === "csv") return "Laporan Keuangan/Tahunan";
   return "Dokumen Lainnya";
@@ -2069,6 +2071,61 @@ function printTransformReport(d, caseCtx) {
 
 
 /* ---------- Agen Analis Keuangan ---------- */
+function InterimPanel({ d }) {
+  const it = d && d.interim;
+  if (!it || !it.label) return null;
+  const ms = Array.isArray(it.metrics) ? it.metrics.filter((m) => m && m.m) : [];
+  const toneColor = (t, delta) => {
+    const v = t || (String(delta || "").trim().charAt(0) === "-" ? "negative" : "neutral");
+    return v === "positive" ? "var(--teal-500)" : v === "negative" ? "var(--risk-high)" : "var(--text-muted)";
+  };
+  const eq = it.earningsQuality || null;
+  const ltm = it.ltm || null;
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <Card>
+        <CardHeader
+          title={`Periode Interim Terkini \u00b7 ${it.label}`}
+          subtitle={`Perbandingan same-period: ${it.label} vs ${it.priorLabel || "periode sama tahun lalu"}${it.endDate ? " \u00b7 posisi " + it.endDate : ""}`}
+          action={<div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {it.auditStatus ? <Badge tone="neutral" dot>{it.auditStatus}</Badge> : null}
+            {it.entityBasis ? <Badge tone="accent" dot>{it.entityBasis}</Badge> : null}
+          </div>}
+        />
+        {ms.length ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            {ms.map((m, i) => (
+              <div key={i} title={m.note || ""} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 12px", background: "var(--surface)" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)", marginBottom: 4 }}>{m.m}</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-body)" }}>{m.now}</span>
+                  {m.delta ? <span style={{ fontSize: 12.5, fontWeight: 700, color: toneColor(m.tone, m.delta) }}>{m.delta}</span> : null}
+                </div>
+                {m.prior ? <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 2 }}>{(it.priorLabel || "periode lalu") + ": " + m.prior}</div> : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {ltm && ltm.available ? (
+          <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--text-muted)", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <Badge tone="accent" dot>{ltm.label || "LTM"}</Badge>
+            {(ltm.metrics || []).map((m, i) => <span key={i}><b style={{ color: "var(--text-body)" }}>{m.m}:</b> {m.v}</span>)}
+            {ltm.note ? <span style={{ color: "var(--text-faint)" }}>({ltm.note})</span> : null}
+          </div>
+        ) : null}
+        {eq && (eq.headline || eq.detail) ? (
+          <div style={{ marginTop: 14, borderLeft: "3px solid var(--risk-high)", paddingLeft: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 4 }}>Kualitas Laba Interim{eq.driver ? " \u00b7 Driver: " + eq.driver : ""}</div>
+            {eq.headline ? <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-body)", marginBottom: 4 }}>{eq.headline}</div> : null}
+            {eq.detail ? <div style={{ fontSize: 12.5, color: "var(--text-body)", lineHeight: 1.65 }}>{eq.detail}</div> : null}
+            {eq.guidance ? <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.65, marginTop: 4 }}><b>Guidance vs realisasi:</b> {eq.guidance}</div> : null}
+          </div>
+        ) : null}
+      </Card>
+    </div>
+  );
+}
+
 function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyzedAt, versioning }) {
   const { Card, CardHeader, StatCard, DataTable, Badge, Alert, Tabs, Select, Button } = AgNS;
   const [tab, setTab] = React.useState("ringkasan");
@@ -2205,6 +2262,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyz
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 20 }}>
             {kpis.map((k, i) => <StatCard key={k.label} {...k} accent={i === 0} icon={<Icon n={k.icon || ["trending-up", "percent", "wallet", "waves"][i] || "circle-dollar-sign"} s={18} />} />)}
           </div>
+          <InterimPanel d={d} />
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16, marginBottom: 20 }}>
             <Card>
               <CardHeader title="Tren Metrik Keuangan" subtitle={`Nilai per tahun · ${rangeLabel}`} action={multi ? <Badge tone="positive" dot>CAGR Pendapatan {cagr.toFixed(1).replace(".", ",")}%</Badge> : null} />
@@ -2277,7 +2335,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyz
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--cyan-300)" }}>Ulasan Analisis Keuangan</div>
               <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 6 }}>{company}</div>
               <div style={{ display: "flex", gap: 26, marginTop: 14, flexWrap: "wrap" }}>
-                {[["Periode", multi ? `Tahun Buku ${startYear}–${endYear}` : `Tahun Buku ${endYear} (Audited)`], ["Basis", d.reviewMeta.basis], ["Disusun oleh", d.reviewMeta.prepared]].map(([k, v]) => (
+                {[["Periode", multi ? `Tahun Buku ${startYear}–${endYear}` : `Tahun Buku ${endYear}`], ["Basis", d.reviewMeta.basis], ["Disusun oleh", d.reviewMeta.prepared]].map(([k, v]) => (
                   <div key={k}>
                     <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>{k}</div>
                     <div style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 3 }}>{v}</div>
