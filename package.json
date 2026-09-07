@@ -1,6 +1,6 @@
 {
   "name": "stratix-console",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "STRATIX Console — platform konsultan AI untuk analisis kesehatan perusahaan.",
   "author": "Mandiri Capital Indonesia",
   "license": "UNLICENSED",
@@ -14,7 +14,8 @@
     "dist:msi": "electron-builder --win msi --x64"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "jsdom": "^30.0.1"
   },
   "devDependencies": {
     "electron": "^33.0.0",

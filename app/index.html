@@ -2071,7 +2071,15 @@ function printTransformReport(d, caseCtx) {
 
 
 /* ---------- Agen Analis Keuangan ---------- */
+class InterimGuard extends React.Component {
+  constructor(p) { super(p); this.state = { err: false }; }
+  static getDerivedStateFromError() { return { err: true }; }
+  componentDidCatch() {}
+  render() { return this.state.err ? null : this.props.children; }
+}
+
 function InterimPanel({ d }) {
+  const { Card, CardHeader, Badge } = AgNS;
   const it = d && d.interim;
   if (!it || !it.label) return null;
   const ms = Array.isArray(it.metrics) ? it.metrics.filter((m) => m && m.m) : [];
@@ -2262,7 +2270,7 @@ function AgentFinance({ d, caseCtx, onGenerateReview, onRerun, rerunning, analyz
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 20 }}>
             {kpis.map((k, i) => <StatCard key={k.label} {...k} accent={i === 0} icon={<Icon n={k.icon || ["trending-up", "percent", "wallet", "waves"][i] || "circle-dollar-sign"} s={18} />} />)}
           </div>
-          <InterimPanel d={d} />
+          <InterimGuard><InterimPanel d={d} /></InterimGuard>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16, marginBottom: 20 }}>
             <Card>
               <CardHeader title="Tren Metrik Keuangan" subtitle={`Nilai per tahun · ${rangeLabel}`} action={multi ? <Badge tone="positive" dot>CAGR Pendapatan {cagr.toFixed(1).replace(".", ",")}%</Badge> : null} />
